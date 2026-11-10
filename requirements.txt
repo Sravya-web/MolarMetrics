@@ -2,6 +2,9 @@
 # tested in this project's environment (Python 3.13.5, macOS 15, Apple M2).
 # A full snapshot of every transitive package is in requirements-lock.txt.
 streamlit==1.67.0
+fastapi==0.162.4
+uvicorn==0.54.0
+python-multipart==0.0.33
 langchain==1.4.9
 langchain-core==1.7.7
 langchain-ollama==1.1.0
