@@ -1,0 +1,27 @@
+{
+  "test": "stage1_tool_calling_smoke_test",
+  "run_at_utc": "2026-11-10T06:25:10+00:00",
+  "model": "llama3.2:3b",
+  "base_url": "http://localhost:11434",
+  "question": "How many completed appointments are there?",
+  "expected_completed": 7,
+  "seconds": 4.4,
+  "tool_calls": [
+    {
+      "name": "count_appointments",
+      "args": {
+        "status": "completed"
+      }
+    }
+  ],
+  "tool_outputs": [
+    "{\"status\": \"completed\", \"appointment_count\": 7}"
+  ],
+  "final_answer": "There are 7 completed appointments in the database.",
+  "checks": {
+    "model_called_the_tool": true,
+    "tool_returned_expected_count": true,
+    "final_answer_states_expected_count": true
+  },
+  "verdict": "PASS"
+}

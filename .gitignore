@@ -1,0 +1,54 @@
+# MolarMetrics .gitignore
+# Generated data (data/), verification records (reports/) and screenshots
+# (docs/screenshots/) are deliberately TRACKED: they are part of the portfolio
+# deliverable and let reviewers check results without running anything.
+
+# Python environments and build output
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test, lint and tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+# Local settings and secrets (copy .env.example to .env)
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+
+# Local machine and editor settings
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*~
+.claude/settings.local.json
+
+# Temporary build folders and partial test reports
+data/.molarmetrics_build_*/
+reports/integration_report_subset.*
+
+# Web app runtime data: uploaded datasets, upload staging and the session
+# registry. Clinic uploads must never be committed.
+runtime/
+
+# Frontend build output, dependencies and browser-test artefacts
+web/node_modules/
+web/dist/
+web/test-results/
+web/playwright-report/

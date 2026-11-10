@@ -1,0 +1,489 @@
+{
+  "app": "MolarMetrics",
+  "run_at_utc": "2026-11-10T17:14:15+00:00",
+  "model": "llama3.2:3b",
+  "base_url": "http://localhost:11434",
+  "status": "PASS",
+  "priority_passed": "5/5",
+  "all_passed": "11/11",
+  "results": [
+    {
+      "id": "Q1",
+      "question": "What was billed revenue in 2025?",
+      "priority": true,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "billed revenue 2025 = 6809100 INR"
+      },
+      "tool_calls": [
+        {
+          "name": "get_clinic_kpis",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "start_date": "2025-01-01"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "From 1 Jan 2025 to 31 Dec 2025, 2,954 appointments were scheduled: 2,464 completed visits, 265 cancelled appointments and 225 no-show appointments.",
+        "No-show rate from 1 Jan 2025 to 31 Dec 2025: 7.6% of scheduled appointments (225 no-show appointments ÷ 2,954 scheduled appointments).",
+        "695 unique patients had at least one completed visit from 1 Jan 2025 to 31 Dec 2025; 606 of these patients were returning patients (they had an earlier completed visit, including visits before the period).",
+        "Billed revenue from 1 Jan 2025 to 31 Dec 2025 (sum of treatment net fees, by treatment date): ₹68,09,100.00.",
+        "Collections from 1 Jan 2025 to 31 Dec 2025 (sum of payments received, by payment date): ₹64,18,640.00."
+      ],
+      "answer": "The billed revenue in 2025 was ₹68,09,100.00. This is the total amount of fees charged for treatments during the period from 1 January 2025 to 31 December 2025.",
+      "error": null,
+      "seconds": 6.0,
+      "passed": true
+    },
+    {
+      "id": "Q2",
+      "question": "Compare monthly billed revenue and collections in 2025.",
+      "priority": true,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "12 months; totals billed 6809100, collected 6418640 INR"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_finances",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "start_date": "2025-01-01",
+            "metric": "monthly_billed_vs_collected"
+          },
+          "status": "ok",
+          "validated_args": {
+            "metric": "monthly_billed_vs_collected",
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "Billed revenue from 1 Jan 2025 to 31 Dec 2025 (sum of treatment net fees, by treatment date): ₹68,09,100.00 in total.",
+        "Collections from 1 Jan 2025 to 31 Dec 2025 (sum of payments received, by payment date): ₹64,18,640.00 in total.",
+        "Over the whole period, collections were ₹3,90,460.00 lower than billed revenue. This is one total for the period, not a per-month figure, and it is not the unpaid balance."
+      ],
+      "answer": "The monthly billed revenue and collections for 2025 are as follows:\n\n- Billed revenue: ₹68,09,100.00\n- Collections: ₹64,18,640.00\n- Difference between billed and collected: ₹3,90,460.00\n\nThese figures are for the period from January 1, 2025, to December 31, 2025. The difference between billed and collected amounts is ₹3,90,460.00, indicating that the clinic collected less than it billed.",
+      "error": null,
+      "seconds": 5.7,
+      "passed": true
+    },
+    {
+      "id": "Q3",
+      "question": "Which five procedures generated the most billed revenue in 2025?",
+      "priority": true,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "Composite filling: 1217770; Crown placement: 1156800; Implant placement: 902600; Root canal treatment (session): 836990; Scaling: 763210"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_procedures",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "metric": "billed_revenue",
+            "procedures": [],
+            "start_date": "2025-01-01",
+            "top_n": "5"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "metric": "billed_revenue",
+            "procedures": [],
+            "top_n": 5
+          }
+        }
+      ],
+      "facts": [
+        "Top 5 procedures by billed revenue from 1 Jan 2025 to 31 Dec 2025: 1. Composite filling: ₹12,17,770.00 (17.9% of all billed revenue); 2. Crown placement: ₹11,56,800.00 (17.0% of all billed revenue); 3. Implant placement: ₹9,02,600.00 (13.3% of all billed revenue); 4. Root canal treatment (session): ₹8,36,990.00 (12.3% of all billed revenue); 5. Scaling: ₹7,63,210.00 (11.2% of all billed revenue).",
+        "Together, the 5 listed procedures account for 71.6% of all billed revenue from 1 Jan 2025 to 31 Dec 2025 (₹48,77,370.00 of ₹68,09,100.00), which is more than half."
+      ],
+      "answer": "The top 5 procedures that generated the most billed revenue in 2025 are: \n\n1. Composite filling: ₹12,17,770.00 \n2. Crown placement: ₹11,56,800.00 \n3. Implant placement: ₹9,02,600.00 \n4. Root canal treatment (session): ₹8,36,990.00 \n5. Scaling: ₹7,63,210.00 \n\nThese 5 procedures account for 71.6% of all billed revenue from 1 Jan 2025 to 31 Dec 2025.",
+      "error": null,
+      "seconds": 6.4,
+      "passed": true
+    },
+    {
+      "id": "Q4",
+      "question": "What was the no-show rate by month in 2025?",
+      "priority": true,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "overall 7.6%; 01: 4.4%, 02: 3.9%, 03: 8.6%, 04: 6.7%, 05: 5.7%, 06: 10.4%, 07: 8.9%, 08: 13.6%, 09: 7.6%, 10: 6.4%, 11: 6.0%, 12: 8.6%"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_appointments",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "group_by": "month",
+            "metric": "no_show_rate",
+            "start_date": "2025-01-01"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "group_by": "month",
+            "metric": "no_show_rate"
+          }
+        }
+      ],
+      "facts": [
+        "From 1 Jan 2025 to 31 Dec 2025, 2,954 appointments were scheduled: 2,464 completed visits, 265 cancelled appointments and 225 no-show appointments.",
+        "Overall no-show rate from 1 Jan 2025 to 31 Dec 2025: 7.6% of scheduled appointments (225 no-show appointments ÷ 2,954 scheduled appointments).",
+        "Highest no-show rate by month: 13.6% in Aug 2025 (33 no-show appointments ÷ 243 scheduled appointments).",
+        "Lowest no-show rate by month: 3.9% in Feb 2025 (8 no-show appointments ÷ 204 scheduled appointments)."
+      ],
+      "answer": "The no-show rate by month in 2025 was as follows:\n\n* January 2025: 4.4%\n* February 2025: 3.9%\n* March 2025: 8.6%\n* April 2025: 6.7%\n* May 2025: 5.7%\n* June 2025: 10.4%\n* July 2025: 8.9%\n* August 2025: 13.6%\n* September 2025: 7.6%\n* October 2025: 6.4%\n* November 2025: 6.0%\n* December 2025: 8.6%\n\nThe highest no-show rate was 13.6% in August 2025, while the lowest was 3.9% in February 2025.",
+      "error": null,
+      "seconds": 8.0,
+      "passed": true
+    },
+    {
+      "id": "Q5",
+      "question": "How much was outstanding as of 31 December 2025?",
+      "priority": true,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "outstanding as of 2025-12-31 = 905720 INR"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_finances",
+          "model_args": {
+            "as_of_date": "2025-12-31",
+            "end_date": "2025-12-31",
+            "metric": "outstanding_balance"
+          },
+          "status": "ok",
+          "validated_args": {
+            "metric": "outstanding_balance",
+            "as_of_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "As of 31 Dec 2025, the outstanding balance was ₹9,05,720.00: net fees of ₹1,37,99,880.00 for treatments on or before 31 Dec 2025, minus ₹1,28,94,160.00 of payments received against those treatments by 31 Dec 2025.",
+        "384 treatment records had an unpaid balance as of 31 Dec 2025."
+      ],
+      "answer": "As of 31 December 2025, the outstanding balance was ₹9,05,720.00. This is calculated by subtracting the payments received (₹1,28,94,160.00) from the net fees for treatments performed on or before that date (₹1,37,99,880.00). There were 384 treatment records with an unpaid balance as of 31 December 2025.",
+      "error": null,
+      "seconds": 6.2,
+      "passed": true
+    },
+    {
+      "id": "E1",
+      "question": "Which dentist completed the most appointments in 2025?",
+      "priority": false,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "Dr. Arjun B. with 471 completed visits"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_appointments",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "group_by": "dentist",
+            "metric": "completed_visits",
+            "start_date": "2025-01-01"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "group_by": "dentist",
+            "metric": "completed_visits"
+          }
+        }
+      ],
+      "facts": [
+        "From 1 Jan 2025 to 31 Dec 2025, 2,954 appointments were scheduled: 2,464 completed visits, 265 cancelled appointments and 225 no-show appointments.",
+        "Overall no-show rate from 1 Jan 2025 to 31 Dec 2025: 7.6% of scheduled appointments (225 no-show appointments ÷ 2,954 scheduled appointments).",
+        "Most completed visits by dentist from 1 Jan 2025 to 31 Dec 2025: Dr. Arjun B. (D02) with 471 completed appointments.",
+        "Appointment counts describe scheduling workload, not clinical quality or dentist performance."
+      ],
+      "answer": "The data shows that Dr. Arjun B. (D02) completed the most appointments in 2025 with 471 completed visits. Appointment counts describe scheduling workload, not clinical quality or dentist performance.",
+      "error": null,
+      "seconds": 4.0,
+      "passed": true
+    },
+    {
+      "id": "E2",
+      "question": "How many returning patients were seen in 2025?",
+      "priority": false,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "606 returning patients in 2025"
+      },
+      "tool_calls": [
+        {
+          "name": "get_clinic_kpis",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "start_date": "2025-01-01"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "From 1 Jan 2025 to 31 Dec 2025, 2,954 appointments were scheduled: 2,464 completed visits, 265 cancelled appointments and 225 no-show appointments.",
+        "No-show rate from 1 Jan 2025 to 31 Dec 2025: 7.6% of scheduled appointments (225 no-show appointments ÷ 2,954 scheduled appointments).",
+        "695 unique patients had at least one completed visit from 1 Jan 2025 to 31 Dec 2025; 606 of these patients were returning patients (they had an earlier completed visit, including visits before the period).",
+        "Billed revenue from 1 Jan 2025 to 31 Dec 2025 (sum of treatment net fees, by treatment date): ₹68,09,100.00.",
+        "Collections from 1 Jan 2025 to 31 Dec 2025 (sum of payments received, by payment date): ₹64,18,640.00."
+      ],
+      "answer": "The clinic saw 695 unique patients in 2025, with 606 of them being returning patients.",
+      "error": null,
+      "seconds": 5.2,
+      "passed": true
+    },
+    {
+      "id": "E3",
+      "question": "Compare root canal and extraction procedure counts in 2025.",
+      "priority": false,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "records_not_called_patients": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "Root canal treatment (session): 286 records, Extraction: 163 records; patients: Root canal treatment (session): 140, Extraction: 140"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_procedures",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "metric": "treatment_count",
+            "procedures": [
+              "Root canal treatment (session)",
+              "Extraction"
+            ],
+            "start_date": "2025-01-01"
+          },
+          "status": "ok",
+          "validated_args": {
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31",
+            "metric": "treatment_count",
+            "procedures": [
+              "Root canal treatment (session)",
+              "Extraction"
+            ],
+            "top_n": 10
+          }
+        }
+      ],
+      "facts": [
+        "Together, the 2 listed procedures account for 13.7% of all treatment records from 1 Jan 2025 to 31 Dec 2025 (449 treatment records of 3,281 treatment records), which is less than half.",
+        "Root canal treatment (session): 286 treatment records for 140 patients from 1 Jan 2025 to 31 Dec 2025; billed revenue ₹8,36,990.00.",
+        "Extraction: 163 treatment records for 140 patients from 1 Jan 2025 to 31 Dec 2025; billed revenue ₹3,87,290.00.",
+        "Root canal treatment (session) had 123 more treatment records than Extraction (286 vs 163). These are records, not patients: distinct patients were 140 and 140."
+      ],
+      "answer": "The procedure counts for root canal treatment (session) and extraction in 2025 are 286 and 163, respectively. These procedures account for 13.7% of all treatment records from January 1, 2025, to December 31, 2025. Root canal treatment (session) had 123 more treatment records than extraction. The billed revenue for these procedures is ₹8,36,990.00 and ₹3,87,290.00, respectively.",
+      "error": null,
+      "seconds": 6.1,
+      "passed": true
+    },
+    {
+      "id": "E4",
+      "question": "Which treatment works best?",
+      "priority": false,
+      "checks": {
+        "explains_limitation": true,
+        "mentions_missing_outcome_data": true,
+        "grounded": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true
+      },
+      "details": {
+        "expected": "say clinical outcome data is unavailable; no rankings or invented numbers"
+      },
+      "tool_calls": [],
+      "facts": [],
+      "answer": "MolarMetrics cannot answer that, because its data has no clinical outcome information.\n\nHowever, it can provide insights into the most commonly billed procedures or the revenue generated by specific treatments. For example, it can help identify which procedures are most frequently billed or provide information on the total revenue generated by different treatment types.",
+      "error": null,
+      "seconds": 2.2,
+      "passed": true
+    },
+    {
+      "id": "E5",
+      "question": "What was the average patient satisfaction score in 2025?",
+      "priority": false,
+      "checks": {
+        "explains_limitation": true,
+        "no_satisfaction_score_invented": true,
+        "grounded": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true
+      },
+      "details": {
+        "expected": "say satisfaction data is not in the dataset; no invented score",
+        "numbers_in_answer": "2025, 2025"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_finances",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "start_date": "2025-01-01",
+            "metric": "outstanding_balance"
+          },
+          "status": "ok",
+          "validated_args": {
+            "metric": "outstanding_balance",
+            "as_of_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "As of 31 Dec 2025, the outstanding balance was ₹9,05,720.00: net fees of ₹1,37,99,880.00 for treatments on or before 31 Dec 2025, minus ₹1,28,94,160.00 of payments received against those treatments by 31 Dec 2025.",
+        "384 treatment records had an unpaid balance as of 31 Dec 2025."
+      ],
+      "answer": "The data does not provide information on patient satisfaction scores. The tool \"analyze_finances\" only provides data on outstanding balances, billed revenue, payments received, and treatment records with balances. To find information on patient satisfaction, we can ask a different question, such as \"What is the total number of treatment records in 2025?\" or \"What is the total billed revenue for 2025?\".",
+      "error": null,
+      "seconds": 6.4,
+      "passed": true
+    },
+    {
+      "id": "E6",
+      "question": "How much money was collected in 2025?",
+      "priority": false,
+      "checks": {
+        "tool_called": true,
+        "arguments_ok": true,
+        "tool_numbers_ok": true,
+        "answer_ok": true,
+        "no_average_misuse": true,
+        "majority_supported": true,
+        "units_consistent": true,
+        "billed_vs_collections_consistent": true,
+        "grounded": true
+      },
+      "details": {
+        "expected": "collections 2025 = 6418640 INR; billed revenue 6809100 INR must not be presented as collections"
+      },
+      "tool_calls": [
+        {
+          "name": "analyze_finances",
+          "model_args": {
+            "end_date": "2025-12-31",
+            "start_date": "2025-01-01",
+            "metric": "monthly_billed_vs_collected"
+          },
+          "status": "ok",
+          "validated_args": {
+            "metric": "monthly_billed_vs_collected",
+            "start_date": "2025-01-01",
+            "end_date": "2025-12-31"
+          }
+        }
+      ],
+      "facts": [
+        "Billed revenue from 1 Jan 2025 to 31 Dec 2025 (sum of treatment net fees, by treatment date): ₹68,09,100.00 in total.",
+        "Collections from 1 Jan 2025 to 31 Dec 2025 (sum of payments received, by payment date): ₹64,18,640.00 in total.",
+        "Over the whole period, collections were ₹3,90,460.00 lower than billed revenue. This is one total for the period, not a per-month figure, and it is not the unpaid balance."
+      ],
+      "answer": "The total collections in 2025 were ₹64,18,640.00, while the total billed revenue was ₹68,09,100.00. This means that the difference between billed and collected revenue was ₹3,90,460.00.",
+      "error": null,
+      "seconds": 4.4,
+      "passed": true
+    }
+  ]
+}

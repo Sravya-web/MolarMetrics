@@ -1,0 +1,15 @@
+[project]
+name = "molarmetrics"
+version = "0.1.0"
+description = "MolarMetrics: AI-powered dental clinic analytics. A local portfolio prototype on SYNTHETIC demo data."
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "MolarMetrics portfolio project" }]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+markers = [
+    "integration: needs a running local Ollama server with llama3.2:3b (deselected by default)",
+]
+addopts = "-m 'not integration' -p no:langsmith_plugin"

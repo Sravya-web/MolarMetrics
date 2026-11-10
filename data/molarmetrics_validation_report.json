@@ -1,0 +1,360 @@
+{
+  "summary": {
+    "status": "PASS",
+    "checks_total": 36,
+    "checks_passed": 36,
+    "checks_failed": 0,
+    "failed_check_ids": [],
+    "informational_checks": 1
+  },
+  "observation_period": {
+    "start": "2024-01-01",
+    "end": "2025-12-31"
+  },
+  "statistics": {
+    "appointments_by_status": {
+      "cancelled": 509,
+      "completed": 4951,
+      "no_show": 469
+    },
+    "completed_visits_without_treatment_records": 505,
+    "appointments_with_multiple_treatments": 1896,
+    "treatments_with_split_payments": 402,
+    "treatments_partially_paid": 225,
+    "treatments_unpaid": 159,
+    "treatments_with_zero_net_fee": 81,
+    "total_net_fees_paise": 1379988000,
+    "total_payments_paise": 1289416000
+  },
+  "checks": [
+    {
+      "id": "pk_unique_patients",
+      "description": "patients.patient_id values are unique and not null",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "pk_unique_dentists",
+      "description": "dentists.dentist_id values are unique and not null",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "pk_unique_appointments",
+      "description": "appointments.appointment_id values are unique and not null",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "pk_unique_treatments",
+      "description": "treatments.treatment_id values are unique and not null",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "pk_unique_payments",
+      "description": "payments.payment_id values are unique and not null",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "fk_integrity",
+      "description": "Every foreign key points at an existing parent row",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "registration_on_or_before_first_appointment",
+      "description": "Each patient's registration_date is on or before their first appointment",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "patients_without_appointments",
+      "description": "Patients registered but never booked (informational)",
+      "severity": "info",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "status_values_valid",
+      "description": "Appointment status is completed, cancelled or no_show",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "no_dentist_double_booking",
+      "description": "A dentist never has two appointments at the same date-time",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "no_patient_double_booking",
+      "description": "A patient never has two appointments at the same date-time",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "appointments_on_working_days",
+      "description": "Appointments fall on the dentist's working days (never Sundays/holidays)",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "appointments_in_clinic_hours",
+      "description": "Appointment times are valid 30-minute clinic slots",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "dates_within_observation_period",
+      "description": "All registration, appointment and payment dates are within 2024-01-01..2025-12-31",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "treatments_only_on_completed_appointments",
+      "description": "Only completed appointments have treatment records",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "procedure_names_in_catalog",
+      "description": "procedure_name is one of the documented procedures",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "money_is_integer_paise",
+      "description": "Fees and payments are stored as integer paise",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "fees_non_negative",
+      "description": "Listed fee, discount and net fee are never negative",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "discount_not_above_listed_fee",
+      "description": "Discount never exceeds the listed fee",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "net_fee_equals_listed_minus_discount",
+      "description": "net_fee = listed_fee - discount (exact, in paise)",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "listed_fees_within_documented_ranges",
+      "description": "Listed fees lie within the documented illustrative ranges",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "tooth_numbers_valid_fdi",
+      "description": "Non-null tooth numbers are valid FDI codes (11-48, 51-85)",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "tooth_number_matches_procedure",
+      "description": "Tooth-specific procedures have a tooth number; other procedures have NULL",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "dentition_plausible_for_age",
+      "description": "Primary teeth only up to age 12; permanent teeth from age 6; third molars from age 16",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "procedure_plausible_for_age",
+      "description": "Each procedure is within its documented plausible age range",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "payment_amounts_positive",
+      "description": "Every payment amount is greater than zero",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "payment_methods_valid",
+      "description": "payment_method is one of the documented methods",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "payments_not_exceeding_net_fee",
+      "description": "Total payments per treatment never exceed its net fee",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "payment_not_before_treatment_date",
+      "description": "No payment is dated before its treatment's appointment date",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "no_direct_patient_identifiers",
+      "description": "patients table has only the documented non-identifying columns (no names, phones, emails, addresses)",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": []
+    },
+    {
+      "id": "pattern_appointment_volume",
+      "description": "Roughly 6,000 appointments (5,500-6,500)",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "5929 appointments"
+    },
+    {
+      "id": "pattern_cancellations_and_no_shows",
+      "description": "Some cancellations and no-shows exist",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "509 cancelled, 469 no-shows"
+    },
+    {
+      "id": "pattern_repeat_visits",
+      "description": "Some patients have more than one completed visit",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "785 patients with repeat completed visits"
+    },
+    {
+      "id": "pattern_multiple_treatments_per_visit",
+      "description": "Some completed appointments have several treatment records",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "1896 appointments with 2+ treatments"
+    },
+    {
+      "id": "pattern_split_payments",
+      "description": "Some treatments are paid in several transactions",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "402 treatments with 2+ payments"
+    },
+    {
+      "id": "pattern_partially_paid_treatments",
+      "description": "Some treatments are only partially paid",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "225 partially paid treatments"
+    },
+    {
+      "id": "pattern_null_tooth_numbers",
+      "description": "Non-tooth-specific procedures have NULL tooth numbers",
+      "severity": "error",
+      "passed": true,
+      "violations": 0,
+      "examples": [],
+      "detail": "4189 treatments with NULL tooth_number"
+    }
+  ],
+  "dataset": {
+    "app": "MolarMetrics",
+    "notice": "SYNTHETIC DEMO DATA",
+    "generator_version": "1.0",
+    "settings": {
+      "seed": 42,
+      "n_patients": 1000,
+      "period_start": "2024-01-01",
+      "period_end": "2025-12-31"
+    },
+    "row_counts": {
+      "patients": 1000,
+      "dentists": 8,
+      "appointments": 5929,
+      "treatments": 6667,
+      "payments": 6893
+    },
+    "csv_sha256": {
+      "patients": "20344e41666449c67e337f5093c06e9247be9ac05f66e099db4e655958734f80",
+      "dentists": "f1d5700ac7bebae72cf92317d0bf1712d6b4696f48a29b87f1a42d2b39bb98ab",
+      "appointments": "6b0c3e17f0ab5996eb3b728a3731581e8c06ed991400edb4d931109541f28351",
+      "treatments": "3f1698822af837bdd0fb6c3daa17e4f2c6159e87a0ceed1014980ad73d982701",
+      "payments": "4b859123709f03a1c699e739a391df9cb2823f0cb9feebde6fc7e09d1e1c2522"
+    }
+  },
+  "generated_at_utc": "2026-11-10T05:48:36+00:00"
+}

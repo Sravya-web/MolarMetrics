@@ -1,0 +1,31 @@
+table,column,type,description
+patients,patient_id,TEXT (PK),"Patient identifier, e.g. P0001 (ordered by registration date)."
+patients,birth_year,INTEGER,Year of birth. Age at a visit is approximated as visit year - birth_year.
+patients,gender,TEXT,"Female, Male or Other."
+patients,locality,TEXT,Invented locality label (not a real address).
+patients,registration_date,DATE (YYYY-MM-DD),Date registered; always on or before the first appointment.
+dentists,dentist_id,TEXT (PK),"Dentist identifier, D01-D08."
+dentists,fictional_display_name,TEXT,Invented display name. Any resemblance to a real person is coincidental.
+dentists,specialty,TEXT,Clinical specialty label used only to make procedure assignment plausible.
+appointments,appointment_id,TEXT (PK),"Appointment identifier, e.g. A00001 (chronological)."
+appointments,patient_id,TEXT (FK),References patients.patient_id.
+appointments,dentist_id,TEXT (FK),References dentists.dentist_id.
+appointments,appointment_datetime,DATETIME (YYYY-MM-DD HH:MM:SS),"Booked slot (30-minute slots, 10:00-13:30 and 17:00-20:30; closed Sundays and 26 Jan, 15 Aug, 2 Oct)."
+appointments,status,TEXT,"completed, cancelled or no_show."
+appointments,visit_reason,TEXT,Reason recorded when booking (free-text style label).
+treatments,treatment_id,TEXT (PK),"Treatment line-item identifier, e.g. T00001."
+treatments,appointment_id,TEXT (FK),References a COMPLETED appointment. Treatment date = appointment date.
+treatments,procedure_name,TEXT,Procedure performed; see the procedure table below for what one row means.
+treatments,tooth_number,INTEGER or NULL,"FDI two-digit tooth code (11-48 permanent, 51-85 primary). NULL for non-tooth-specific procedures."
+treatments,listed_fee_inr,DECIMAL (INR),Listed fee in rupees (derived from listed_fee_paise).
+treatments,discount_inr,DECIMAL (INR),Discount in rupees; never exceeds the listed fee.
+treatments,net_fee_inr,DECIMAL (INR),Net fee = listed fee - discount. This is the 'billed' amount.
+treatments,listed_fee_paise,INTEGER,Authoritative listed fee in paise (1 INR = 100 paise).
+treatments,discount_paise,INTEGER,Authoritative discount in paise.
+treatments,net_fee_paise,INTEGER,Authoritative net fee in paise. Analytics sum this column.
+payments,payment_id,TEXT (PK),"Payment identifier, e.g. PM00001 (chronological)."
+payments,treatment_id,TEXT (FK),References treatments.treatment_id.
+payments,payment_date,DATE (YYYY-MM-DD),Date received; never before the treatment date.
+payments,amount_inr,DECIMAL (INR),Amount in rupees (derived from amount_paise).
+payments,payment_method,TEXT,"UPI, Cash, Card or Net banking."
+payments,amount_paise,INTEGER,Authoritative amount in paise. Analytics sum this column.

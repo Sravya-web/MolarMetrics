@@ -1,0 +1,23 @@
+# MolarMetrics Streamlit settings
+
+[server]
+# Only this computer can open the app (it has no login). Setting a specific
+# address also stops Streamlit from looking up your public IP address online.
+address = "localhost"
+
+[client]
+# Hide developer-only buttons (Deploy, Rerun, Clear cache) for a clean demo.
+toolbarMode = "viewer"
+# Never show stack traces in the browser; full details still go to the terminal.
+showErrorDetails = "type"
+
+[browser]
+# Keep everything local: do not send Streamlit usage statistics.
+gatherUsageStats = false
+
+[theme]
+base = "light"
+primaryColor = "#0b7f75"            # teal (4.9:1 contrast with white button text)
+backgroundColor = "#ffffff"         # white
+secondaryBackgroundColor = "#f1f6f8"
+textColor = "#1b2f4b"               # navy
