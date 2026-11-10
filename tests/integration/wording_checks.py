@@ -168,7 +168,7 @@ def unit_mismatch(answer: str, question: str, artifacts: list[AnalysisResult]) -
     return (not problems), "; ".join(problems)
 
 
-def _claimed_family(before: str, after: str) -> str | None:
+def _claimed_family(before: str, after: str, clause: str | None = None) -> str | None:
     """Which measure does the sentence say this amount is? Rules, in order:
     1. a keyword right after the amount: "₹X of payments received"
     2. "... by ₹X" or "₹X less/more/lower/higher": a difference
@@ -179,7 +179,9 @@ def _claimed_family(before: str, after: str) -> str | None:
         if re.match(r"^\s*(?:(?:of|in|from|as)\s+(?:the\s+)?(?:total\s+)?|(?:was|were|is|are|has been|had been)\s+)"
                     r"(?:" + pattern + r")\b", after, re.I):
             return family
-    if _DIFF_BY.search(before) or _DIFF_AFTER.match(after) or _DIFF_NOUN.search(before):
+    # Rule 3 looks at the WHOLE clause: a 70-character window can cut "difference" in half
+    # ("The difference between billed and collected revenue for the whole period was ₹X").
+    if _DIFF_BY.search(before) or _DIFF_AFTER.match(after) or _DIFF_NOUN.search(clause if clause is not None else before):
         return "difference"
     nearest = None
     for family, pattern in _KEYWORDS:
@@ -200,7 +202,8 @@ def billed_collections_swap(answer: str, question: str, artifacts: list[Analysis
         previous_end = 0
         for m in _AMOUNT.finditer(sentence):
             # Only look back to the previous amount, so each amount gets its own clause.
-            before = sentence[previous_end:m.start()][-70:]
+            clause = sentence[previous_end:m.start()]
+            before = clause[-70:]
             after = sentence[m.end():m.end() + 30]
             previous_end = m.end()
             families = known.get(Decimal(m.group("num").replace(",", "")))
@@ -208,7 +211,7 @@ def billed_collections_swap(answer: str, question: str, artifacts: list[Analysis
                 continue  # not a tool amount: the number-grounding check covers that
             if re.match(r"^\s*(?:,|and|&)\s*₹", after):
                 continue  # paired amounts "₹X and ₹Y": which is which is ambiguous, so skipped
-            claim = _claimed_family(before, after)
+            claim = _claimed_family(before, after, clause)
             if claim is None:
                 continue
             if claim not in families:

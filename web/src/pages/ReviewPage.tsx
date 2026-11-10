@@ -385,7 +385,7 @@ function MappingTable({ columns, preview, info, mapping, onChange }: { columns: 
       <h3 className="text-sm font-semibold text-navy">Columns</h3>
       <div className="mt-2 overflow-hidden rounded-lg border border-line">
         <table className="w-full border-collapse text-sm">
-          <thead>
+          <thead className="hidden sm:table-header-group">
             <tr className="bg-page text-left">
               <th scope="col" className="w-1/2 px-4 py-2.5 font-semibold text-ink">File column</th>
               <th scope="col" className="w-1/2 px-4 py-2.5 font-semibold text-ink">Map to</th>
@@ -395,14 +395,14 @@ function MappingTable({ columns, preview, info, mapping, onChange }: { columns: 
             {columns.map((column, i) => {
               const id = `map-${i}`;
               return (
-                <tr key={column} className="border-t border-line">
-                  <td className="px-4 py-2.5 align-middle">
+                <tr key={column} className="block border-t border-line first:border-t-0 sm:table-row sm:first:border-t">
+                  <td className="block px-4 pb-1 pt-2.5 align-middle sm:table-cell sm:pb-2.5">
                     <label htmlFor={id} className="block break-words text-ink">
                       {column}
                     </label>
                     {sample(i) && <span className="block truncate text-xs text-muted">e.g. {sample(i)}</span>}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="block px-4 pb-3 pt-1 sm:table-cell sm:py-2">
                     <div className="relative">
                       <select
                         id={id}

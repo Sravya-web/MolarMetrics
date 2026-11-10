@@ -11,6 +11,10 @@ const port = Number(process.env.MOLARMETRICS_WEB_PORT ?? 5173);
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Pre-bundle the heavy libraries at start-up (no mid-session reloads), and let
+  // the browser tests use their own cache so two dev servers never collide.
+  cacheDir: process.env.MOLARMETRICS_VITE_CACHE ?? "node_modules/.vite",
+  optimizeDeps: { include: ["react", "react-dom", "react-dom/client", "recharts", "lucide-react"] },
   server: {
     host: "127.0.0.1",
     port,

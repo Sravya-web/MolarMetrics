@@ -19,6 +19,8 @@ LOCAL_HOSTS = {"127.0.0.1", "localhost", "::1"}
 def main(argv: list[str] | None = None) -> int:
     import uvicorn
 
+    import molarmetrics.config  # noqa: F401  (loads .env before the defaults below are read)
+
     parser = argparse.ArgumentParser(description="Run the MolarMetrics web API (local only).")
     parser.add_argument("--host", default=os.environ.get("MOLARMETRICS_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=int(os.environ.get("MOLARMETRICS_API_PORT", "8000")))

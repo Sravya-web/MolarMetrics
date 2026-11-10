@@ -1,13 +1,14 @@
 import { AlertCircle, CheckCircle2, ChevronDown, Info, Loader2, TriangleAlert } from "lucide-react";
 import { useId, useState, type ButtonHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "danger-ghost";
 
 const VARIANTS: Record<Variant, string> = {
   primary: "bg-teal text-white hover:bg-teal-hover disabled:bg-[#9cbfbb] disabled:text-white",
   secondary: "bg-surface text-navy border border-line-strong hover:bg-page disabled:text-muted",
   ghost: "text-teal hover:bg-teal-soft disabled:text-muted",
   danger: "bg-danger text-white hover:bg-[#912018]",
+  "danger-ghost": "text-danger hover:bg-danger-soft disabled:text-muted",
 };
 
 export function Button({

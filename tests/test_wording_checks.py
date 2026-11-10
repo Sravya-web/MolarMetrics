@@ -68,6 +68,13 @@ GOOD = [
      "treatment records for Extraction. This means that Root canal treatment had 123 more treatment records than "
      "Extraction. These are records, not patients. The billed revenue for Root canal treatment was ₹8,36,990.00 "
      "and for Extraction was ₹3,87,290.00."),
+    # 11 Nov 2026 live run: a correct monthly answer that the 70-character window once misread.
+    ("monthly", "Compare monthly billed revenue and collections in 2025.",
+     "The monthly billed revenue and collections in 2025 are as follows:\n\n- The highest monthly billed revenue "
+     "was ₹7,24,260.00 in December 2025.\n- The lowest monthly billed revenue was ₹4,12,810.00 in February "
+     "2025.\n- The highest monthly collections were ₹6,72,820.00 in December 2025.\n- The lowest monthly "
+     "collections were ₹4,03,360.00 in August 2025.\n\nThe difference between billed and collected revenue for "
+     "the whole period was ₹3,90,460.00, with collections being ₹3,90,460.00 lower than billed revenue."),
     ("kpis", "What was the average patient satisfaction score in 2025?",
      "The average patient satisfaction score in 2025 is not available, as the data does not contain clinical "
      "outcome information."),

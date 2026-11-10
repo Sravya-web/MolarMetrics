@@ -23,7 +23,7 @@ export function DatasetSelect() {
             setError(err instanceof Error ? err.message : "Couldn't switch datasets.");
           }
         }}
-        className="w-[230px] max-w-full"
+        className="w-fit min-w-[200px] max-w-full"
       >
         {state.datasets.map((d) => (
           <option key={d.id} value={d.id}>

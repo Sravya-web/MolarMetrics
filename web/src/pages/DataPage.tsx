@@ -288,7 +288,7 @@ export function DataPage() {
                           Use this dataset
                         </Button>
                       )}
-                      <Button variant="ghost" size="sm" className="text-danger hover:bg-danger-soft" onClick={() => setRemoving(d)}>
+                      <Button variant="danger-ghost" size="sm" onClick={() => setRemoving(d)}>
                         <Trash2 aria-hidden className="size-4" />
                         {d.kind === "sample" ? "Remove from session" : "Remove dataset"}
                       </Button>
