@@ -249,11 +249,18 @@ class UploadedFileOut(BaseModel):
     preview: list[list[str]]
 
 
+class TypeSuggestion(BaseModel):
+    mapping: dict[str, str]
+    status_map: dict[str, str]
+
+
 class UploadBatchOut(BaseModel):
     batch_id: str
     files: list[UploadedFileOut]
     config: ImportConfig
     report: ValidationReport
+    # file id -> record type -> suggested mapping (used when the user changes a file's type)
+    suggestions: dict[str, dict[str, TypeSuggestion]]
 
 
 class UploadRejection(BaseModel):

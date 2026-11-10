@@ -125,8 +125,7 @@ def test_sunrise_overview_matches_hand_calculations(client):
     k = _kpis(overview)
     assert (k["billed_revenue"]["value"], k["billed_revenue"]["exact"]) == (4_700_000, "₹47,000.00")
     assert (k["collections"]["value"], k["collections"]["exact"]) == (3_720_000, "₹37,200.00")
-    assert (k["outstanding_balance"]["value"], k["outstanding_balance"]["label"]) == (
-        980_000, "Outstanding on 12 Mar 2025")
+    assert (k["outstanding_balance"]["value"], k["outstanding_balance"]["detail"]) == (980_000, "On 12 Mar 2025")
     assert (k["completed_visits"]["value"], k["completed_visits"]["detail"]) == (11, "of 16 scheduled appointments")
     assert (k["no_show_rate"]["display"], k["no_show_rate"]["detail"]) == ("18.8%", "3 of 16 scheduled appointments")
     rows = overview["finance"]["rows"]
@@ -337,7 +336,7 @@ def _strings(value):
                          "capabilities", "record_type", "suggested_record_type", "field", "file_id", "status",
                          "money_unit", "money_unit_suggestion", "chosen", "suggested", "candidates", "detected",
                          "filters", "columns", "rows", "mapping", "date_range", "decision", "batch_id", "config",
-                         "severity", "series"):
+                         "severity", "series", "suggestions"):
                 yield from _strings(v)
     elif isinstance(value, list):
         for v in value:

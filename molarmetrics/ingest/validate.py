@@ -202,12 +202,12 @@ def initial_config(files: list[ParsedFile], name: str = "") -> ImportConfig:
         if rtype:
             cfg.mapping = suggest_mapping(RECORD_SPECS[rtype], pf.columns)
             if rtype == "appointments" and "status" in cfg.mapping:
-                cfg.status_map = _suggested_statuses(pf, cfg.mapping["status"])
+                cfg.status_map = suggested_statuses(pf, cfg.mapping["status"])
         configs.append(cfg)
     return ImportConfig(name=name, files=configs)
 
 
-def _suggested_statuses(pf: ParsedFile, column: str) -> dict[str, StatusValue]:
+def suggested_statuses(pf: ParsedFile, column: str) -> dict[str, StatusValue]:
     out: dict[str, StatusValue] = {}
     for _, raw in pf.column_values(column):
         key = status_key(raw)

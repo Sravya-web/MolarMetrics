@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+/* MolarMetrics design tokens (from the approved mockup). Light only. */
+@theme {
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+
+  --color-page: #f5f7f8;
+  --color-rail: #f8fafa;
+  --color-surface: #ffffff;
+  --color-line: #e3e8ec;
+  --color-line-strong: #cfd6dc;
+  --color-navy: #0f2440;
+  --color-ink: #1b2f4b;
+  --color-muted: #536373;
+  --color-teal: #0b7f75;
+  --color-teal-hover: #096b63;
+  --color-teal-soft: #e7f3f1;
+  --color-teal-line: #b8ddd7;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdecea;
+  --color-amber: #8a5a00;
+  --color-amber-soft: #fdf3dc;
+
+  /* Data colours, validated with the dataviz palette checks (light surface). */
+  --color-series-billed: #008a7a;
+  --color-series-collected: #3cc4ab;
+  --color-series-completed: #008a7a;
+  --color-series-cancelled: #6250d6;
+  --color-series-noshow: #eb6834;
+  --color-grid: #e6eaee;
+  --color-axis: #c5ccd3;
+
+  --radius-card: 0.625rem;
+}
+
+:root {
+  color-scheme: light;
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  background: var(--color-surface);
+}
+
+/* One clearly visible keyboard focus style everywhere. */
+:focus-visible {
+  outline: 2px solid var(--color-teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+#page-title:focus {
+  outline: none;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

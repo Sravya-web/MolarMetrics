@@ -1,0 +1,8 @@
+/** The MolarMetrics tooth mark, drawn in the same stroke style as Lucide icons. */
+export function ToothMark({ className = "size-6" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden className={className}>
+      <path d="M7.5 3.5c-2.4 0-4 1.9-4 4.6 0 2.1.8 3.4 1.5 5 .7 1.7.8 3.6 1.2 5.4.3 1.4.9 2.5 1.9 2.5 1.1 0 1.5-1.2 1.8-2.8l.6-3.2c.2-.9.8-1.4 1.5-1.4s1.3.5 1.5 1.4l.6 3.2c.3 1.6.7 2.8 1.8 2.8 1 0 1.6-1.1 1.9-2.5.4-1.8.5-3.7 1.2-5.4.7-1.6 1.5-2.9 1.5-5 0-2.7-1.6-4.6-4-4.6-1.8 0-2.7 1-4.5 1s-2.7-1-4.5-1z" />
+    </svg>
+  );
+}

@@ -19,12 +19,20 @@ from pathlib import Path
 
 from molarmetrics.analytics.export import csv_safe_text, write_csv
 from molarmetrics.api.retention import Retention
-from molarmetrics.api.schemas import UploadBatchOut, UploadedFileOut, UploadRejection
+from molarmetrics.api.schemas import TypeSuggestion, UploadBatchOut, UploadedFileOut, UploadRejection
 from molarmetrics.api.settings import WebSettings
 from molarmetrics.api.store import BatchRow, DatasetRow, Store
 from molarmetrics.ingest.build import atomic_import
-from molarmetrics.ingest.parsing import ParsedFile, UploadRejected, parse_csv
-from molarmetrics.ingest.validate import ImportConfig, Issue, ValidationReport, initial_config, validate_batch
+from molarmetrics.ingest.fields import RECORD_ORDER, RECORD_SPECS
+from molarmetrics.ingest.parsing import ParsedFile, UploadRejected, parse_csv, suggest_mapping
+from molarmetrics.ingest.validate import (
+    ImportConfig,
+    Issue,
+    ValidationReport,
+    initial_config,
+    suggested_statuses,
+    validate_batch,
+)
 
 PREVIEW_ROWS = 5
 _SEVERITY_LABEL = {"blocking": "Must fix", "review": "Needs review", "warning": "Check", "info": "Note"}
@@ -128,7 +136,7 @@ class UploadService:
             files=[UploadedFileOut(file_id=pf.file_id, filename=pf.filename, size=pf.size, rows=len(pf.rows),
                                    columns=pf.columns, preview=[cells for _, cells in pf.rows[:PREVIEW_ROWS]])
                    for pf in files],
-            config=config, report=report)
+            config=config, report=report, suggestions={pf.file_id: _type_suggestions(pf) for pf in files})
 
     # --- review actions ---------------------------------------------------------------
     def validate(self, batch: BatchRow, config: ImportConfig) -> ValidationReport:
@@ -186,6 +194,15 @@ class UploadService:
         config = config.model_copy(deep=True)
         config.files = [c for c in config.files if c.file_id in ids]
         return config
+
+
+def _type_suggestions(pf: ParsedFile) -> dict[str, TypeSuggestion]:
+    out = {}
+    for rtype in RECORD_ORDER:
+        mapping = suggest_mapping(RECORD_SPECS[rtype], pf.columns)
+        statuses = suggested_statuses(pf, mapping["status"]) if rtype == "appointments" and "status" in mapping else {}
+        out[rtype] = TypeSuggestion(mapping=mapping, status_map=statuses)
+    return out
 
 
 def _default_name(filenames: list[str]) -> str:

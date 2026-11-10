@@ -96,7 +96,7 @@ def build_overview(conn: sqlite3.Connection, ctx: DatasetContext, dataset: Datas
     kpis: list[KpiOut] = []
     unavailable: list[str] = []
 
-    def money_card(key: str, label: str, paise: int, detail: str) -> KpiOut:
+    def money_card(key: str, label: str, paise: int, detail: str | None) -> KpiOut:
         return KpiOut(key=key, label=label, status="available", kind="inr", value=paise,
                       display=format_inr_compact(paise), exact=format_inr(paise), detail=detail,
                       reason=None, definition=DEFINITIONS[key])
@@ -106,14 +106,12 @@ def build_overview(conn: sqlite3.Connection, ctx: DatasetContext, dataset: Datas
                       detail=None, reason=reason, definition=DEFINITIONS[key])
 
     if has_t:
-        kpis.append(money_card("billed_revenue", "Billed revenue", k["billed_revenue"].value,
-                               "Fees charged, by treatment date"))
+        kpis.append(money_card("billed_revenue", "Billed revenue", k["billed_revenue"].value, None))
     else:
         kpis.append(missing_card("billed_revenue", "Billed revenue", "Add treatment records to see billed revenue."))
         unavailable.append("Add treatment records to see billed revenue and top procedures.")
     if has_p:
-        kpis.append(money_card("collections", "Collections", k["collections"].value,
-                               "Payments received, by payment date"))
+        kpis.append(money_card("collections", "Collections", k["collections"].value, None))
     else:
         kpis.append(missing_card("collections", "Collections", "Add payment records to see collections."))
         unavailable.append("Add payment records to see collections and outstanding balances.")
@@ -130,8 +128,8 @@ def build_overview(conn: sqlite3.Connection, ctx: DatasetContext, dataset: Datas
                        definition=DEFINITIONS["no_show_rate"]))
     if has_t and has_p:
         o = A.finances(conn, models["analyze_finances"](metric="outstanding_balance", as_of_date=e), ctx)
-        kpis.append(money_card("outstanding_balance", f"Outstanding on {display_date(e)}",
-                               o.summary_value("outstanding_balance"), "Unpaid net fees up to this date"))
+        kpis.append(money_card("outstanding_balance", "Outstanding balance",
+                               o.summary_value("outstanding_balance"), f"On {display_date(e)}"))
     else:
         kpis.append(missing_card("outstanding_balance", "Outstanding balance",
                                  "Add treatment and payment records to see outstanding balances."))
