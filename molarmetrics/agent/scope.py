@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import re
 
+from molarmetrics.dataset import PAYMENTS, TREATMENTS, DatasetContext, resolve
+
 _PATTERNS = [
     r"\bworks?\s+(the\s+)?best\b",
     r"\bmost\s+effective\b",
@@ -32,11 +34,40 @@ _PATTERNS = [
 ]
 _COMPILED = [re.compile(p, re.IGNORECASE) for p in _PATTERNS]
 
-SCOPE_SYSTEM_PROMPT = """You are MolarMetrics, an analytics assistant for a FICTIONAL dental clinic with SYNTHETIC DEMO DATA.
-The data contains only appointments, treatment billing records and payments. It has NO clinical outcome, diagnosis, success-rate or quality data.
-The user's question asks about clinical effectiveness, quality, diagnosis or treatment advice.
-Begin your reply with exactly this sentence: "MolarMetrics cannot answer that, because its data has no clinical outcome information."
-Then, in one or two more sentences, without giving any numbers or ranking treatments or dentists, suggest one or two operational questions it can answer, such as "Which procedures generated the most billed revenue in 2025?" or "What was the no-show rate by month in 2025?"."""
+SCOPE_REFUSAL = "MolarMetrics cannot answer that, because its data has no clinical outcome information."
+
+
+def build_scope_prompt(ctx: DatasetContext | None = None) -> str:
+    """Prompt for the tool-free reply to a clinical-outcome question. Example
+    questions use the dataset's own record types and latest year."""
+    ctx = resolve(ctx)
+    if ctx.is_sample:
+        return (
+            "You are MolarMetrics, an analytics assistant for a FICTIONAL dental clinic with SYNTHETIC DEMO DATA.\n"
+            "The data contains only appointments, treatment billing records and payments. It has NO clinical "
+            "outcome, diagnosis, success-rate or quality data.\n"
+            "The user's question asks about clinical effectiveness, quality, diagnosis or treatment advice.\n"
+            f'Begin your reply with exactly this sentence: "{SCOPE_REFUSAL}"\n'
+            "Then, in one or two more sentences, without giving any numbers or ranking treatments or dentists, "
+            "suggest one or two operational questions it can answer, such as \"Which procedures generated the "
+            "most billed revenue in 2025?\" or \"What was the no-show rate by month in 2025?\".")
+    year = ctx.example_year()
+    examples = [f"What was the no-show rate by month in {year}?"]
+    if ctx.has(TREATMENTS):
+        examples.insert(0, f"Which procedures generated the most billed revenue in {year}?")
+    contents = "appointments" + (", treatment billing records" if ctx.has(TREATMENTS) else "") + \
+        (" and payments" if ctx.has(PAYMENTS) else "")
+    return (
+        "You are MolarMetrics, an analytics assistant for a dental clinic.\n"
+        f"The data contains only {contents}. It has NO clinical outcome, diagnosis, success-rate or quality data.\n"
+        "The user's question asks about clinical effectiveness, quality, diagnosis or treatment advice.\n"
+        f'Begin your reply with exactly this sentence: "{SCOPE_REFUSAL}"\n'
+        "Then, in one or two more sentences, without giving any numbers or ranking treatments or dentists, "
+        "suggest one or two operational questions it can answer, such as "
+        + " or ".join(f'"{q}"' for q in examples) + ". Never mention tools, models or how you work.")
+
+
+SCOPE_SYSTEM_PROMPT = build_scope_prompt()
 
 
 def is_clinical_outcome_question(question: str) -> bool:

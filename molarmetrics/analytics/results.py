@@ -140,7 +140,9 @@ class ChartSpec(BaseModel):
 class AnalysisResult(BaseModel):
     tool: str
     title: str
-    status: Literal["ok", "empty", "error"] = "ok"
+    # "unavailable": the dataset lacks the records this analysis needs (e.g. an
+    # appointments-only upload asked about revenue). Never shown as zeros.
+    status: Literal["ok", "empty", "unavailable", "error"] = "ok"
     notice: str = DATA_NOTICE
     arguments: dict[str, Any] = Field(default_factory=dict)
     period: str = ""
@@ -188,7 +190,7 @@ class AnalysisResult(BaseModel):
         payload: dict[str, Any] = {
             "tool": self.tool,
             "status": self.status,
-            "data": f"{self.notice} (fictional clinic)",
+            "data": f"{self.notice} (fictional clinic)" if self.notice == DATA_NOTICE else self.notice,
             "date_range": self.date_range,
             "facts_calculated_by_molarmetrics": self.facts,
             "metrics": [
@@ -215,6 +217,14 @@ class AnalysisResult(BaseModel):
             payload["warnings"] = self.warnings
         payload["definitions"] = self.definitions
         return json.dumps(payload, ensure_ascii=False)
+
+
+def unavailable_result(tool: str, title: str, message: str, *, arguments: dict, period: str,
+                       date_range: dict[str, str], notice: str) -> AnalysisResult:
+    """The dataset cannot answer this (missing record type). The message names
+    the records to add; it is a fact so the model can quote it verbatim."""
+    return AnalysisResult(tool=tool, title=title, status="unavailable", notice=notice, arguments=arguments,
+                          period=period, date_range=date_range, facts=[message])
 
 
 def error_result(tool: str, message: str, arguments: dict | None = None) -> AnalysisResult:

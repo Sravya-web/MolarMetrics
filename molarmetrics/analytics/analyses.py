@@ -19,8 +19,6 @@ import sqlite3
 from molarmetrics.analytics import metrics as M
 from molarmetrics.analytics.definitions import pick
 from molarmetrics.analytics.params import (
-    DATA_END,
-    DATA_START,
     AppointmentArgs,
     FinanceArgs,
     KpiArgs,
@@ -37,13 +35,25 @@ from molarmetrics.analytics.results import (
     month_label,
     pct,
     sanitize_text,
+    unavailable_result,
 )
+from molarmetrics.dataset import DENTIST_BREAKDOWN, PAYMENTS, TREATMENTS, DatasetContext, resolve
 
 WORKLOAD_NOTE = ("Appointment counts describe scheduling workload only. They are not a measure of "
                  "clinical quality or dentist performance.")
 APPT_DATE = "appointment date"
 PAY_DATE = "payment date"
 AS_OF = "as-of date"
+
+# What to add when a dataset lacks the records an analysis needs. Plain language:
+# these sentences reach users and the model verbatim.
+NEEDS_TREATMENTS = ("This dataset has no treatment records, so billed revenue and procedure figures are not "
+                    "available. Add treatment records to see them.")
+NEEDS_PAYMENTS_FOR_COLLECTIONS = "Add payment records to see collections."
+NEEDS_OUTSTANDING = ("Outstanding balances need both treatment and payment records. Add {missing} to see "
+                     "outstanding balances.")
+NEEDS_DENTISTS = ("This dataset has no dentist information on its appointments. Add dentist IDs to the "
+                  "appointments file to see results by dentist.")
 
 
 def _period_text(start: str, end: str) -> str:
@@ -72,19 +82,41 @@ def _status_fact(period: str, t: dict) -> str:
             f"visits, {_n(t['cancelled'])} cancelled appointments and {_n(t['no_show'])} no-show appointments.")
 
 
-def _coverage(start: str, end: str) -> tuple[list[str], list[str], bool]:
-    """Notes/warnings about how the requested period relates to the data.
-    Returns (notes, warnings, completely_outside)."""
+def _coverage(start: str, end: str, ctx: DatasetContext) -> tuple[list[str], list[str], bool]:
+    """Notes/warnings about how the requested period relates to the dataset's
+    coverage. Returns (notes, warnings, completely_outside)."""
     notes, warnings = [], []
-    if end < DATA_START or start > DATA_END:
-        warnings.append(f"No data for this period: the synthetic dataset covers {DATA_START} to {DATA_END}.")
+    first, last = ctx.coverage_start, ctx.coverage_end
+    covered = f"{display_date(first)} to {display_date(last)}"
+    if end < first or start > last:
+        warnings.append(f"No data for this period: this dataset covers {covered}.")
         return notes, warnings, True
-    if start < DATA_START or end > DATA_END:
-        warnings.append(f"The period extends beyond the available data ({DATA_START} to {DATA_END}); "
+    if start < first or end > last:
+        warnings.append(f"The period extends beyond the available data ({covered}); "
                         "only records inside that window exist.")
-    if start == DATA_START and end == DATA_END:
-        notes.append(f"This covers the full data period ({DATA_START} to {DATA_END}).")
+    if start == first and end == last:
+        notes.append(f"This covers the full data period ({covered}).")
     return notes, warnings, False
+
+
+def _join(labels: list[str], noun: str = "months") -> str:
+    """'Jan 2025', 'Jan 2025 and Mar 2025', or 'Jan 2025, Feb 2025, Mar 2025 and 4 other months'."""
+    if len(labels) <= 3:
+        return " and ".join(labels)
+    return f"{', '.join(labels[:3])} and {len(labels) - 3} other {noun}"
+
+
+def _monthly_extremes(rows: list[dict], key: str, measure: str, verb: str, period: str) -> list[str]:
+    """Highest and lowest month for one money series, as quotable facts.
+    The measure word sits right before the amount so it cannot be misread."""
+    if len(rows) < 2:
+        return []
+    hi, hi_val = _ties(rows, key, "month_label", highest=True)
+    lo, lo_val = _ties(rows, key, "month_label", highest=False)
+    if not hi or hi_val == lo_val:
+        return [f"From {period}, the monthly {measure} {verb} the same in every month: {_inr(hi_val)}."] if hi else []
+    return [f"From {period}, the highest monthly {measure} {verb} {_inr(hi_val)} ({_join(hi)}).",
+            f"From {period}, the lowest monthly {measure} {verb} {_inr(lo_val)} ({_join(lo)})."]
 
 
 def _ties(rows: list[dict], key: str, label_key: str, highest: bool = True) -> tuple[list[str], object]:
@@ -113,59 +145,86 @@ def _appointment_count_items(t: dict, rate_label: str) -> list[SummaryItem]:
 
 
 # --- 1. KPIs ---------------------------------------------------------------------------
-def clinic_kpis(conn: sqlite3.Connection, args: KpiArgs) -> AnalysisResult:
+def clinic_kpis(conn: sqlite3.Connection, args: KpiArgs, ctx: DatasetContext | None = None) -> AnalysisResult:
+    ctx = resolve(ctx)
     s, e = args.start_date, args.end_date
     period = human_period(s, e)
-    notes, warnings, outside = _coverage(s, e)
+    notes, warnings, outside = _coverage(s, e, ctx)
+    has_treatments, has_payments = ctx.has(TREATMENTS), ctx.has(PAYMENTS)
     sc = M.status_counts(conn, s, e)
     pc = M.patient_counts(conn, s, e)
-    br = M.billed_revenue(conn, s, e)
-    co = M.collections(conn, s, e)
+    # Money is only calculated when the dataset has the records for it: a missing
+    # record type is reported as unavailable, never as a zero.
+    br = M.billed_revenue(conn, s, e) if has_treatments else None
+    co = M.collections(conn, s, e) if has_payments else None
     if sc["scheduled"] == 0:
         warnings.append("No scheduled appointments in this period, so the no-show rate is undefined (n/a).")
-    empty = outside or (sc["scheduled"] == 0 and br["treatment_count"] == 0 and co["payment_count"] == 0)
+    empty = outside or (sc["scheduled"] == 0 and (br is None or br["treatment_count"] == 0)
+                        and (co is None or co["payment_count"] == 0))
     facts = [
         _status_fact(period, sc),
         f"No-show rate from {period}: {_no_show_text(sc['no_show'], sc['scheduled'])}.",
         f"{_n(pc['unique_patients_seen'])} unique patients had at least one completed visit from {period}; "
         f"{_n(pc['returning_patients'])} of these patients were returning patients (they had an earlier "
         "completed visit, including visits before the period).",
-        f"Billed revenue from {period} (sum of treatment net fees, by treatment date): "
-        f"{_inr(br['billed_paise'])}.",
-        f"Collections from {period} (sum of payments received, by payment date): {_inr(co['collected_paise'])}.",
     ]
+    summary = _appointment_count_items(sc, "No-show rate") + [
+        SummaryItem(key="unique_patients_seen", label="Unique patients seen", value=pc["unique_patients_seen"],
+                    kind="count", unit="patients", aggregation="distinct count", date_basis=APPT_DATE),
+        SummaryItem(key="returning_patients", label="Returning patients", value=pc["returning_patients"],
+                    kind="count", unit="patients", aggregation="distinct count", date_basis=APPT_DATE),
+    ]
+    definition_keys = ["scheduled_appointments", "completed_visits", "no_show_rate", "unique_patients_seen",
+                       "returning_patients"]
+    if br is not None:
+        facts.append(f"Billed revenue from {period} (sum of treatment net fees, by treatment date): "
+                     f"{_inr(br['billed_paise'])}.")
+        summary.append(SummaryItem(key="billed_revenue", label="Billed revenue", value=br["billed_paise"],
+                                   kind="inr", unit="INR", aggregation="sum", date_basis=APPT_DATE))
+        definition_keys.append("billed_revenue")
+    else:
+        facts.append("Billed revenue is not available: this dataset has no treatment records. "
+                     "Add treatment records to see billed revenue.")
+    if co is not None:
+        facts.append(f"Collections from {period} (sum of payments received, by payment date): "
+                     f"{_inr(co['collected_paise'])}.")
+        summary.append(SummaryItem(key="collections", label="Collections", value=co["collected_paise"],
+                                   kind="inr", unit="INR", aggregation="sum", date_basis=PAY_DATE))
+        definition_keys.append("collections")
+    else:
+        facts.append("Collections are not available: this dataset has no payment records. "
+                     f"{NEEDS_PAYMENTS_FOR_COLLECTIONS}")
+    if br is not None and co is not None:
+        notes.append("Billed revenue (fees charged, by treatment date) and collections (payments received, "
+                     "by payment date) are different measures.")
     return AnalysisResult(
         tool="get_clinic_kpis",
         title=f"Clinic KPIs, {_period_text(s, e)}",
         status="empty" if empty else "ok",
+        notice=ctx.notice,
         arguments=args.model_dump(),
         period=_period_text(s, e),
         date_range={"start": s, "end": e},
         facts=facts,
-        definitions=pick("scheduled_appointments", "completed_visits", "no_show_rate", "unique_patients_seen",
-                         "returning_patients", "billed_revenue", "collections"),
-        summary=_appointment_count_items(sc, "No-show rate") + [
-            SummaryItem(key="unique_patients_seen", label="Unique patients seen", value=pc["unique_patients_seen"],
-                        kind="count", unit="patients", aggregation="distinct count", date_basis=APPT_DATE),
-            SummaryItem(key="returning_patients", label="Returning patients", value=pc["returning_patients"],
-                        kind="count", unit="patients", aggregation="distinct count", date_basis=APPT_DATE),
-            SummaryItem(key="billed_revenue", label="Billed revenue", value=br["billed_paise"], kind="inr",
-                        unit="INR", aggregation="sum", date_basis=APPT_DATE),
-            SummaryItem(key="collections", label="Collections", value=co["collected_paise"], kind="inr",
-                        unit="INR", aggregation="sum", date_basis=PAY_DATE),
-        ],
-        notes=notes + ["Billed revenue (fees charged, by treatment date) and collections (payments received, "
-                       "by payment date) are different measures."],
+        definitions=pick(*definition_keys),
+        summary=summary,
+        notes=notes + (list(ctx.import_notes) if (br is not None or co is not None) else []),
         warnings=warnings,
     )
 
 
 # --- 2. Appointments -------------------------------------------------------------------------
-def appointments(conn: sqlite3.Connection, args: AppointmentArgs) -> AnalysisResult:
+def appointments(conn: sqlite3.Connection, args: AppointmentArgs,
+                 ctx: DatasetContext | None = None) -> AnalysisResult:
+    ctx = resolve(ctx)
     s, e = args.start_date, args.end_date
     period = human_period(s, e)
-    notes, warnings, outside = _coverage(s, e)
+    notes, warnings, outside = _coverage(s, e, ctx)
     by_month = args.group_by == "month"
+    if not by_month and not ctx.has(DENTIST_BREAKDOWN):
+        return unavailable_result("analyze_appointments", f"Appointments by dentist, {_period_text(s, e)}",
+                                  NEEDS_DENTISTS, arguments=args.model_dump(), period=_period_text(s, e),
+                                  date_range={"start": s, "end": e}, notice=ctx.notice)
     rows = M.status_counts_by_month(conn, s, e) if by_month else M.status_counts_by_dentist(conn, s, e)
     for r in rows:
         r["no_show_rate_pct"] = pct(r["no_show"], r["scheduled"])
@@ -221,11 +280,12 @@ def appointments(conn: sqlite3.Connection, args: AppointmentArgs) -> AnalysisRes
         notes.append(WORKLOAD_NOTE)
         facts.append("Appointment counts describe scheduling workload, not clinical quality or dentist performance.")
         if args.metric == "completed_visits":
-            rows.sort(key=lambda r: (-r["completed"], r["dentist_id"]))
+            rows.sort(key=lambda r: (-r["completed"], r["dentist_id"] is None, r["dentist_id"] or ""))
 
     key_cols = ([Column(key="month", label="Month", kind="month", unit="month", aggregation="group")] if by_month
-                else [Column(key="dentist", label="Dentist", kind="text", unit="text", aggregation="group"),
-                      Column(key="specialty", label="Specialty", kind="text", unit="text", aggregation="label")])
+                else [Column(key="dentist", label="Dentist", kind="text", unit="text", aggregation="group")]
+                + ([Column(key="specialty", label="Specialty", kind="text", unit="text", aggregation="label")]
+                   if any(r.get("specialty") for r in rows) else []))
     columns = key_cols + [
         Column(key="scheduled", label="Scheduled", kind="count", unit="appointments", aggregation="count"),
         Column(key="completed", label="Completed", kind="count", unit="appointments", aggregation="count"),
@@ -249,6 +309,7 @@ def appointments(conn: sqlite3.Connection, args: AppointmentArgs) -> AnalysisRes
         tool="analyze_appointments",
         title=f"Appointments by {group_word}, {_period_text(s, e)}",
         status="empty" if (outside or totals["scheduled"] == 0) else "ok",
+        notice=ctx.notice,
         arguments=args.model_dump(),
         period=_period_text(s, e),
         date_range={"start": s, "end": e},
@@ -260,11 +321,16 @@ def appointments(conn: sqlite3.Connection, args: AppointmentArgs) -> AnalysisRes
 
 
 # --- 3. Procedures --------------------------------------------------------------------------------
-def procedures(conn: sqlite3.Connection, args: ProcedureArgs) -> AnalysisResult:
+def procedures(conn: sqlite3.Connection, args: ProcedureArgs, ctx: DatasetContext | None = None) -> AnalysisResult:
+    ctx = resolve(ctx)
     s, e = args.start_date, args.end_date
     period = human_period(s, e)
-    notes, warnings, outside = _coverage(s, e)
-    all_rows = M.procedure_breakdown(conn, s, e)
+    if not ctx.has(TREATMENTS):
+        return unavailable_result("analyze_procedures", f"Procedures, {_period_text(s, e)}", NEEDS_TREATMENTS,
+                                  arguments=args.model_dump(), period=_period_text(s, e),
+                                  date_range={"start": s, "end": e}, notice=ctx.notice)
+    notes, warnings, outside = _coverage(s, e, ctx)
+    all_rows = M.procedure_breakdown(conn, s, e, ctx.procedure_names)
     total_count = sum(r["treatment_count"] for r in all_rows)
     total_billed = sum(r["billed_paise"] for r in all_rows)
     for r in all_rows:
@@ -356,8 +422,10 @@ def procedures(conn: sqlite3.Connection, args: ProcedureArgs) -> AnalysisResult:
         facts.append(sentence)
     notes.append("Treatment records are procedure line items, not patients; see 'Patients treated'.")
     notes.append("This is billing data: it cannot show which treatment works best clinically.")
-    if any("Root canal" in r["procedure"] for r in rows) or not args.procedures:
+    if ctx.is_sample and (any("Root canal" in r["procedure"] for r in rows) or not args.procedures):
+        # Only true of the sample data, where each root canal session is one record.
         notes.append("Root canal treatment is recorded per SESSION; one tooth's course can be 1-3 records.")
+    notes.extend(ctx.import_notes)
     notes.append("Share percentages compare each procedure with all procedures in the period.")
     if total_count == 0 and not outside:
         warnings.append("No treatment records in this period.")
@@ -379,6 +447,7 @@ def procedures(conn: sqlite3.Connection, args: ProcedureArgs) -> AnalysisResult:
         tool="analyze_procedures",
         title=f"Procedures by {metric_label}, {_period_text(s, e)}",
         status="empty" if (outside or total_count == 0) else "ok",
+        notice=ctx.notice,
         arguments=args.model_dump(),
         period=_period_text(s, e),
         date_range={"start": s, "end": e},
@@ -393,12 +462,20 @@ def procedures(conn: sqlite3.Connection, args: ProcedureArgs) -> AnalysisResult:
 
 
 # --- 4. Finances ------------------------------------------------------------------------------------
-def finances(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
+def finances(conn: sqlite3.Connection, args: FinanceArgs, ctx: DatasetContext | None = None) -> AnalysisResult:
+    ctx = resolve(ctx)
     if args.metric == "outstanding_balance":
-        return _outstanding(conn, args)
+        return _outstanding(conn, args, ctx)
     s, e = args.start_date, args.end_date
     period = human_period(s, e)
-    notes, warnings, outside = _coverage(s, e)
+    arguments = {"metric": args.metric, "start_date": s, "end_date": e}
+    if not ctx.has(TREATMENTS):
+        return unavailable_result("analyze_finances", f"Monthly billed revenue vs collections, {_period_text(s, e)}",
+                                  NEEDS_TREATMENTS, arguments=arguments, period=_period_text(s, e),
+                                  date_range={"start": s, "end": e}, notice=ctx.notice)
+    if not ctx.has(PAYMENTS):
+        return _billed_by_month(conn, args, ctx)
+    notes, warnings, outside = _coverage(s, e, ctx)
     rows = M.billed_vs_collected_by_month(conn, s, e)
     for r in rows:
         r["difference_paise"] = r["billed_paise"] - r["collected_paise"]
@@ -410,7 +487,9 @@ def finances(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
     notes += [
         "Billed revenue uses the treatment (appointment) date; collections use the payment date. A month's "
         "collections can include payments for treatments billed earlier.",
-        "Billed minus collected for a period is NOT the outstanding balance; use the outstanding_balance metric.",
+        "Billed minus collected for a period is not the outstanding balance; ask for the outstanding balance "
+        "on a date instead.",
+        *ctx.import_notes,
     ]
     diff = billed - collected
     facts = [
@@ -426,11 +505,15 @@ def finances(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
                      "period, not a per-month figure.")
     else:
         facts.append("Over the whole period, collections equalled billed revenue.")
+    # Month-level facts, so a monthly question gets a monthly answer, not only totals.
+    facts += _monthly_extremes(rows, "billed_paise", "billed revenue", "was", period)
+    facts += _monthly_extremes(rows, "collected_paise", "collections", "were", period)
     return AnalysisResult(
         tool="analyze_finances",
         title=f"Monthly billed revenue vs collections, {_period_text(s, e)}",
         status="empty" if (outside or (billed == 0 and collected == 0)) else "ok",
-        arguments={"metric": args.metric, "start_date": s, "end_date": e},
+        notice=ctx.notice,
+        arguments=arguments,
         period=_period_text(s, e),
         date_range={"start": s, "end": e},
         facts=facts,
@@ -458,20 +541,65 @@ def finances(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
     )
 
 
-def _outstanding(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
+def _billed_by_month(conn: sqlite3.Connection, args: FinanceArgs, ctx: DatasetContext) -> AnalysisResult:
+    """Monthly billed revenue for a dataset with treatments but no payments.
+    Collections are reported as unavailable instead of being shown as zero."""
+    s, e = args.start_date, args.end_date
+    period = human_period(s, e)
+    notes, warnings, outside = _coverage(s, e, ctx)
+    rows = [{"month": r["month"], "billed_paise": r["billed_paise"], "month_label": month_label(r["month"])}
+            for r in M.billed_vs_collected_by_month(conn, s, e)]
+    billed = sum(r["billed_paise"] for r in rows)
+    if billed == 0 and not outside:
+        warnings.append("No billed treatments in this period.")
+    notes += ["Billed revenue uses the treatment (appointment) date.", *ctx.import_notes]
+    facts = [f"Billed revenue from {period} (sum of treatment net fees, by treatment date): {_inr(billed)} in total.",
+             "Collections are not available: this dataset has no payment records. "
+             f"{NEEDS_PAYMENTS_FOR_COLLECTIONS}"]
+    facts += _monthly_extremes(rows, "billed_paise", "billed revenue", "was", period)
+    return AnalysisResult(
+        tool="analyze_finances",
+        title=f"Monthly billed revenue, {_period_text(s, e)}",
+        status="empty" if (outside or billed == 0) else "ok",
+        notice=ctx.notice,
+        arguments={"metric": args.metric, "start_date": s, "end_date": e},
+        period=_period_text(s, e),
+        date_range={"start": s, "end": e},
+        facts=facts,
+        definitions=pick("billed_revenue"),
+        summary=[SummaryItem(key="billed_revenue", label="Total billed revenue", value=billed, kind="inr",
+                             unit="INR", aggregation="sum", date_basis=APPT_DATE)],
+        columns=[Column(key="month", label="Month", kind="month", unit="month", aggregation="group"),
+                 Column(key="billed_paise", label="Billed revenue", kind="inr", unit="INR", aggregation="sum")],
+        rows=rows, notes=notes, warnings=warnings,
+        chart=None if billed == 0 else ChartSpec(type="bar", x="month_label", y=["billed_paise"],
+                                                  title="Billed revenue by month", y_title="INR"),
+    )
+
+
+def _outstanding(conn: sqlite3.Connection, args: FinanceArgs, ctx: DatasetContext) -> AnalysisResult:
     d = args.as_of_date
     day = display_date(d)
+    if not ctx.has("outstanding"):
+        missing = "treatment and payment records" if not ctx.has(TREATMENTS) else "payment records"
+        return unavailable_result("analyze_finances", f"Outstanding balance as of {d}",
+                                  NEEDS_OUTSTANDING.format(missing=missing),
+                                  arguments={"metric": args.metric, "as_of_date": d}, period=f"as of {d}",
+                                  date_range={"as_of": d}, notice=ctx.notice)
     notes, warnings = [], []
-    if d < DATA_START:
-        warnings.append(f"No data before {DATA_START}, so nothing could be outstanding on {d}.")
-    elif d > DATA_END:
-        warnings.append(f"The data ends on {DATA_END}; no treatments or payments after that date are recorded.")
+    if d < ctx.coverage_start:
+        warnings.append(f"There is no data before {display_date(ctx.coverage_start)}, so nothing could be "
+                        f"outstanding on {day}.")
+    elif d > ctx.coverage_end:
+        warnings.append(f"The data ends on {display_date(ctx.coverage_end)}; no treatments or payments after "
+                        "that date are recorded.")
     o = M.outstanding_as_of(conn, d)
     for row in o["aging"]:
         row["share_of_outstanding_pct"] = pct(row["outstanding_paise"], o["outstanding_paise"])
     notes += [
         "Aging buckets group unpaid amounts by days between the treatment date and the as-of date.",
-        "start_date and end_date are not used for the outstanding balance.",
+        "The outstanding balance is measured on a single date, so it does not use a date range.",
+        *ctx.import_notes,
     ]
     if o["treatments_considered"] == 0 and not warnings:
         warnings.append(f"No treatments on or before {d}.")
@@ -485,6 +613,7 @@ def _outstanding(conn: sqlite3.Connection, args: FinanceArgs) -> AnalysisResult:
         tool="analyze_finances",
         title=f"Outstanding balance as of {d}",
         status="empty" if o["treatments_considered"] == 0 else "ok",
+        notice=ctx.notice,
         arguments={"metric": args.metric, "as_of_date": d},
         period=f"as of {d}",
         date_range={"as_of": d},

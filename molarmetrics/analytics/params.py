@@ -19,11 +19,14 @@ from __future__ import annotations
 import calendar
 import re
 from datetime import date, datetime
-from typing import Literal
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator, model_validator
 
 from molarmetrics.data.catalog import PERIOD_END, PERIOD_START, PROCEDURE_ALIASES, PROCEDURE_NAMES
+
+if TYPE_CHECKING:
+    from molarmetrics.dataset import DatasetContext
 
 DATA_START = PERIOD_START.isoformat()
 DATA_END = PERIOD_END.isoformat()
@@ -96,7 +99,9 @@ class DateRangeArgs(_Args):
     @classmethod
     def _parse_dates(cls, value, info: ValidationInfo):
         if value is None or (isinstance(value, str) and not value.strip()):
-            return DATA_START if info.field_name == "start_date" else DATA_END
+            # The class's own default: the sample period here, or the uploaded
+            # dataset's coverage in a subclass made by arg_models_for().
+            return cls.model_fields[info.field_name].default
         role = "start" if info.field_name == "start_date" else "end"
         return parse_date(value, role).isoformat()
 
@@ -164,19 +169,45 @@ class AppointmentArgs(DateRangeArgs):
     _norm_metric = field_validator("metric", mode="before")(_enum_normaliser(_APPT_METRIC, "status_counts"))
 
 
-def resolve_procedure_name(value: str) -> str:
-    """Map a user/model-supplied procedure name to the exact catalog name."""
+def _loose(text: str) -> str:
+    """Lower-case, punctuation-free, singular-ish form for forgiving comparisons."""
+    words = re.sub(r"[^a-z0-9]+", " ", str(text).lower()).split()
+    return " ".join(w[:-1] if len(w) > 3 and w.endswith("s") else w for w in words)
+
+
+def resolve_procedure_name(value: str, names: tuple[str, ...] = PROCEDURE_NAMES) -> str:
+    """Map a user/model-supplied procedure name to an exact name in ``names``
+    (the sample catalog by default, or an uploaded dataset's own procedures).
+
+    Order: exact (case-insensitive) -> documented alias whose target exists ->
+    same words ignoring punctuation/plurals -> a unique partial match. Several
+    partial matches are rejected rather than guessed."""
     text = str(value).strip()
-    for name in PROCEDURE_NAMES:
+    for name in names:
         if text.lower() == name.lower():
             return name
     alias = PROCEDURE_ALIASES.get(re.sub(r"\s+", " ", text.lower()))
-    if alias:
+    if alias and alias in names:
         return alias
-    raise ValueError(f"unknown procedure '{text}'. Valid procedures: {', '.join(PROCEDURE_NAMES)}")
+    loose = _loose(text)
+    same = [n for n in names if _loose(n) == loose]
+    if len(same) == 1:
+        return same[0]
+    partial = [n for n in names if loose and (loose in _loose(n) or _loose(n) in loose)] if len(loose) >= 3 else []
+    if len(partial) == 1:
+        return partial[0]
+    shown = ", ".join(names[:25]) + (f" and {len(names) - 25} more" if len(names) > 25 else "")
+    if len(partial) > 1:
+        raise ValueError(f"'{text}' matches several procedures ({', '.join(partial[:8])}). "
+                         f"Name one exactly. Valid procedures: {shown}")
+    raise ValueError(f"unknown procedure '{text}'. Valid procedures: {shown}")
 
 
 class ProcedureArgs(DateRangeArgs):
+    # The procedure names this model accepts; arg_models_for() swaps in an
+    # uploaded dataset's own names.
+    procedure_catalog: ClassVar[tuple[str, ...]] = PROCEDURE_NAMES
+
     metric: Literal["billed_revenue", "treatment_count"] = Field(
         default="billed_revenue",
         description="'billed_revenue' (sum of net fees) or 'treatment_count' (number of treatment records).")
@@ -200,7 +231,7 @@ class ProcedureArgs(DateRangeArgs):
             raise ValueError("procedures must be a list of procedure names")
         resolved: list[str] = []
         for item in value:
-            name = resolve_procedure_name(item)
+            name = resolve_procedure_name(item, cls.procedure_catalog)
             if name not in resolved:
                 resolved.append(name)
         return resolved
@@ -228,9 +259,49 @@ class FinanceArgs(DateRangeArgs):
     @classmethod
     def _parse_as_of(cls, value):
         if value is None or (isinstance(value, str) and not value.strip()):
-            return DATA_END
+            return cls.model_fields["as_of_date"].default
         return parse_date(value, "point").isoformat()
 
     @property
     def as_of(self) -> date:
         return date.fromisoformat(self.as_of_date)
+
+
+# --- per-dataset argument models ---------------------------------------------------------
+def _subclass(base: type[BaseModel], fields: dict, **class_vars) -> type[BaseModel]:
+    """A subclass of ``base`` with new field defaults/descriptions. Validators
+    are inherited, so normalisation and rejection rules stay identical."""
+    namespace = {"__module__": base.__module__, "__qualname__": base.__qualname__,
+                 "__annotations__": {k: t for k, (t, _) in fields.items()},
+                 **{k: f for k, (_, f) in fields.items()}, **class_vars}
+    return type(base.__name__, (base,), namespace)
+
+
+def arg_models_for(ctx: "DatasetContext | None") -> dict[str, type[BaseModel]]:
+    """Argument models whose defaults and descriptions describe ``ctx``'s
+    dataset: its date coverage and its procedure names. Without a context (or
+    for the sample) the original models are returned unchanged."""
+    if ctx is None or ctx.is_sample:
+        return {"get_clinic_kpis": KpiArgs, "analyze_appointments": AppointmentArgs,
+                "analyze_procedures": ProcedureArgs, "analyze_finances": FinanceArgs}
+    s, e, year = ctx.coverage_start, ctx.coverage_end, ctx.example_year()
+    dates = {
+        "start_date": (str, Field(default=s, description=(
+            f"First day to include, YYYY-MM-DD. For a year such as {year} use {year}-01-01. "
+            f"Default {s} (start of data)."))),
+        "end_date": (str, Field(default=e, description=(
+            f"Last day to include, YYYY-MM-DD. For a year such as {year} use {year}-12-31. "
+            f"Default {e} (end of data)."))),
+    }
+    examples = ", ".join(f"'{n}'" for n in ctx.procedure_names[:2]) or "'Extraction'"
+    procedures = (list[str], Field(default=[], description=(
+        f"Optional list of procedure names to include, e.g. [{examples}]. Leave empty for all procedures.")))
+    as_of = (str, Field(default=e, description=(
+        f"Only for outstanding_balance: the date to measure the balance on, YYYY-MM-DD. Default {e}.")))
+    return {
+        "get_clinic_kpis": _subclass(KpiArgs, dates),
+        "analyze_appointments": _subclass(AppointmentArgs, dates),
+        "analyze_procedures": _subclass(ProcedureArgs, {**dates, "procedures": procedures},
+                                        procedure_catalog=tuple(ctx.procedure_names)),
+        "analyze_finances": _subclass(FinanceArgs, {**dates, "as_of_date": as_of}),
+    }

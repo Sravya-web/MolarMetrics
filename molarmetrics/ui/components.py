@@ -2,19 +2,16 @@
 
 from __future__ import annotations
 
-import csv
-import io
-import re
 from pathlib import Path
 
 import pandas as pd
 import streamlit as st
 
-from molarmetrics import DATA_NOTICE
 from molarmetrics.agent.ollama_status import OllamaStatus, check_ollama
 from molarmetrics.agent.tools import TOOL_SPECS, run_analysis
+# CSV export lives in the shared analytics layer; re-exported here for the app and tests.
+from molarmetrics.analytics.export import csv_filename, result_csv_bytes  # noqa: F401
 from molarmetrics.analytics.results import AnalysisResult, display_period, sanitize_text
-from molarmetrics.money import paise_to_plain
 from molarmetrics.ui.charts import PLOTLY_CONFIG, build_figure
 
 _SPECS = {name: (model, fn) for name, model, fn, _ in TOOL_SPECS}
@@ -42,34 +39,6 @@ def result_table(result: AnalysisResult) -> pd.DataFrame:
     if result.rows:
         return pd.DataFrame(result.formatted_rows())
     return pd.DataFrame([{"Metric": s.label, "Value": s.formatted, "Note": s.note or ""} for s in result.summary])
-
-
-def result_csv_bytes(result: AnalysisResult) -> bytes:
-    """Exact values for download: INR from integer paise, plain counts/percentages."""
-    if result.rows:
-        rows = result.csv_rows()
-    else:
-        rows = []
-        for s in result.summary:
-            value = s.value
-            if s.kind == "inr" and value is not None:
-                value = paise_to_plain(value)
-            rows.append({"metric": s.label, "metric_name": s.key, "value": value, "unit": s.unit,
-                         "aggregation": s.aggregation, "date_basis": s.date_basis or "", "note": s.note or ""})
-    for row in rows:
-        row["period"] = result.period
-        row["data_notice"] = DATA_NOTICE
-    buf = io.StringIO()
-    if rows:
-        writer = csv.DictWriter(buf, fieldnames=list(rows[0].keys()), lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
-    return buf.getvalue().encode("utf-8")
-
-
-def csv_filename(result: AnalysisResult) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "_", f"{result.tool}_{result.period}".lower()).strip("_")
-    return f"molarmetrics_{slug}_synthetic.csv"
 
 
 def _escape_md(text: str) -> str:

@@ -64,19 +64,65 @@ def status_counts_by_month(conn: sqlite3.Connection, start: str, end: str) -> li
             for m in months_between(start, end)]
 
 
+# Dentist name column: the sample database uses ``fictional_display_name``,
+# uploaded datasets use ``display_name``. Chosen from this fixed whitelist only.
+_DENTIST_NAME_COLUMNS = ("display_name", "fictional_display_name")
+
+
+def _dentist_name_column(conn: sqlite3.Connection) -> str:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(dentists)")}
+    return next((c for c in _DENTIST_NAME_COLUMNS if c in cols), "NULL")
+
+
+def _dentist_label(dentist_id: str, name: str | None) -> str:
+    return f"{name} ({dentist_id})" if name else str(dentist_id)
+
+
 def status_counts_by_dentist(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
-    # LEFT JOIN from dentists keeps dentists with zero appointments in the range.
-    rows = conn.execute(
-        f"""SELECT d.dentist_id, d.fictional_display_name, d.specialty, {_STATUS_SUMS}
-            FROM dentists d
-            LEFT JOIN appointments a
-                   ON a.dentist_id = d.dentist_id AND date(a.appointment_datetime) BETWEEN ? AND ?
-            GROUP BY d.dentist_id, d.fictional_display_name, d.specialty
-            ORDER BY d.dentist_id""",
+    """Status counts per dentist. Dentists with zero appointments in the range
+    are kept. Without a dentists table (an appointments-only upload), dentists
+    are the distinct dentist IDs on the appointments. Appointments with no
+    dentist recorded get their own row, so per-dentist rows always add up to
+    the overall totals."""
+    if conn.execute("SELECT EXISTS (SELECT 1 FROM dentists)").fetchone()[0]:
+        name_col = _dentist_name_column(conn)
+        # LEFT JOIN from dentists keeps dentists with zero appointments in the range.
+        rows = conn.execute(
+            f"""SELECT d.dentist_id, d.{name_col} AS name, d.specialty, {_STATUS_SUMS}
+                FROM dentists d
+                LEFT JOIN appointments a
+                       ON a.dentist_id = d.dentist_id AND date(a.appointment_datetime) BETWEEN ? AND ?
+                GROUP BY d.dentist_id, name, d.specialty
+                ORDER BY d.dentist_id""" if name_col != "NULL" else
+            f"""SELECT d.dentist_id, NULL, d.specialty, {_STATUS_SUMS}
+                FROM dentists d
+                LEFT JOIN appointments a
+                       ON a.dentist_id = d.dentist_id AND date(a.appointment_datetime) BETWEEN ? AND ?
+                GROUP BY d.dentist_id, d.specialty
+                ORDER BY d.dentist_id""",
+            (start, end),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            f"""SELECT ids.dentist_id, NULL, NULL, {_STATUS_SUMS}
+                FROM (SELECT DISTINCT dentist_id FROM appointments WHERE dentist_id IS NOT NULL) ids
+                LEFT JOIN appointments a
+                       ON a.dentist_id = ids.dentist_id AND date(a.appointment_datetime) BETWEEN ? AND ?
+                GROUP BY ids.dentist_id
+                ORDER BY ids.dentist_id""",
+            (start, end),
+        ).fetchall()
+    out = [{"dentist_id": r[0], "dentist": _dentist_label(r[0], r[1]), "specialty": r[2],
+            **dict(zip(STATUS_KEYS, (int(v) for v in r[3:])))} for r in rows]
+    unassigned = conn.execute(
+        f"""SELECT {_STATUS_SUMS} FROM appointments a
+            WHERE a.dentist_id IS NULL AND date(a.appointment_datetime) BETWEEN ? AND ?""",
         (start, end),
-    ).fetchall()
-    return [{"dentist_id": r[0], "dentist": f"{r[1]} ({r[0]})", "specialty": r[2],
-             **dict(zip(STATUS_KEYS, (int(v) for v in r[3:])))} for r in rows]
+    ).fetchone()
+    if int(unassigned[0]):
+        out.append({"dentist_id": None, "dentist": "No dentist recorded", "specialty": None,
+                    **dict(zip(STATUS_KEYS, (int(v) for v in unassigned)))})
+    return out
 
 
 # --- patients ---------------------------------------------------------------------------
@@ -140,9 +186,12 @@ def billed_vs_collected_by_month(conn: sqlite3.Connection, start: str, end: str)
             for m in months_between(start, end)]
 
 
-def procedure_breakdown(conn: sqlite3.Connection, start: str, end: str) -> list[dict]:
+def procedure_breakdown(conn: sqlite3.Connection, start: str, end: str,
+                        names: tuple[str, ...] | None = None) -> list[dict]:
     """Treatment records, distinct patients and billed revenue per procedure.
-    Every catalog procedure is returned (zeros when absent in the range)."""
+    Every procedure in ``names`` (default: the sample catalog) is returned, with
+    zeros when absent in the range. Procedures found in the data but missing from
+    ``names`` are appended, so no billed amount is ever dropped."""
     found = {
         r[0]: r[1:]
         for r in conn.execute(
@@ -153,9 +202,11 @@ def procedure_breakdown(conn: sqlite3.Connection, start: str, end: str) -> list[
             (start, end),
         )
     }
+    ordered = list(names if names is not None else PROCEDURE_NAMES)
+    ordered += sorted(n for n in found if n not in ordered)
     return [{"procedure": name, "treatment_count": int(found.get(name, (0, 0, 0))[0]),
              "patients": int(found.get(name, (0, 0, 0))[1]), "billed_paise": int(found.get(name, (0, 0, 0))[2])}
-            for name in PROCEDURE_NAMES]
+            for name in ordered]
 
 
 def outstanding_as_of(conn: sqlite3.Connection, as_of: str) -> dict:

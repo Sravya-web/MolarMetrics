@@ -12,8 +12,11 @@ user question
 
 Safety limits: at most 4 model calls and 3 tool calls per question, a
 recursion limit, a per-request timeout, and one retry for transient server
-errors only. Users never see stack traces; developers see them in the
-terminal log.
+errors only. Users never see stack traces.
+
+Privacy: questions can contain patient information, so they are NEVER
+logged (not even truncated). Logs carry only error categories and exception
+type names.
 """
 
 from __future__ import annotations
@@ -35,11 +38,12 @@ from langchain_ollama import ChatOllama
 from langgraph.errors import GraphRecursionError
 
 from molarmetrics.agent.grounding import GroundingReport, check_grounding
-from molarmetrics.agent.prompts import SYSTEM_PROMPT
-from molarmetrics.agent.scope import SCOPE_SYSTEM_PROMPT, is_clinical_outcome_question
+from molarmetrics.agent.prompts import build_system_prompt
+from molarmetrics.agent.scope import build_scope_prompt, is_clinical_outcome_question
 from molarmetrics.agent.tools import build_tools
 from molarmetrics.analytics.results import AnalysisResult
 from molarmetrics.config import Settings, get_settings
+from molarmetrics.dataset import DatasetContext, resolve
 
 log = logging.getLogger("molarmetrics.agent")
 
@@ -69,6 +73,9 @@ class AgentReply:
     grounding: GroundingReport | None = None
     seconds: float = 0.0
     error: str | None = None
+    # Machine-readable error category for callers that write their own wording:
+    # "unavailable" (server/model not reachable), "timeout", "limit", "failed".
+    error_kind: str | None = None
     notes: list[str] = field(default_factory=list)
     scope_limited: bool = False  # True when the rule-based scope check withheld tools
 
@@ -86,18 +93,38 @@ def _transient(exc: BaseException) -> bool:
     return isinstance(status, int) and status >= 500
 
 
+def error_kind(exc: BaseException) -> str:
+    """A category for logs and callers; never includes request content."""
+    text = str(exc).lower()
+    if isinstance(exc, (ConnectionError, httpx.ConnectError)) or "failed to connect" in text:
+        return "unavailable"
+    if isinstance(exc, httpx.TimeoutException) or "timed out" in text:
+        return "timeout"
+    if "not found" in text and "model" in text:
+        return "unavailable"
+    if isinstance(exc, GraphRecursionError):
+        return "limit"
+    return "failed"
+
+
 def _tool_error_message(exc: Exception, request) -> str:
     """Unexpected tool failures become a short message (no stack trace)."""
     name = request.tool_call.get("name", "tool")
-    log.exception("Tool %s failed unexpectedly", name)
+    # Type name only: an exception message could echo request content.
+    log.error("Tool %s failed unexpectedly (%s)", name, type(exc).__name__)
     return (f"ERROR: the {name} analysis failed unexpectedly ({type(exc).__name__}). "
             "No result is available; tell the user it could not be calculated.")
 
 
 class MolarMetricsAgent:
-    def __init__(self, settings: Settings | None = None, db_path=None, model=None):
-        """``model`` can be injected for offline tests; by default it is ChatOllama."""
+    def __init__(self, settings: Settings | None = None, db_path=None, model=None,
+                 ctx: DatasetContext | None = None):
+        """``model`` can be injected for offline tests; by default it is ChatOllama.
+        ``ctx`` binds the agent to one dataset (its prompt, tools and database);
+        without it the agent uses the bundled sample, as before."""
         self.settings = settings or get_settings()
+        self.ctx = resolve(ctx)
+        self.scope_prompt = build_scope_prompt(self.ctx)
         self.model = model or ChatOllama(
             model=self.settings.ollama_model,
             base_url=self.settings.ollama_base_url,
@@ -108,11 +135,11 @@ class MolarMetricsAgent:
             keep_alive="20m",  # keep the model loaded between demo questions
             client_kwargs={"timeout": self.settings.ollama_timeout_seconds},
         )
-        self.tools = build_tools(db_path)
+        self.tools = build_tools(db_path, ctx)
         self.graph = create_agent(
             model=self.model,
             tools=self.tools,
-            system_prompt=SYSTEM_PROMPT,
+            system_prompt=build_system_prompt(self.ctx),
             middleware=[
                 ModelCallLimitMiddleware(run_limit=MAX_MODEL_CALLS, exit_behavior="end"),
                 ToolCallLimitMiddleware(run_limit=MAX_TOOL_CALLS, exit_behavior="end"),
@@ -140,8 +167,9 @@ class MolarMetricsAgent:
         try:
             state = self.graph.invoke({"messages": messages}, config={"recursion_limit": RECURSION_LIMIT})
         except Exception as exc:  # converted to a friendly message below
-            log.exception("Agent failed for question %r", question)
-            return AgentReply(question=question, answer="", error=self._friendly_error(exc),
+            kind = error_kind(exc)
+            log.error("Question failed (category=%s, error=%s)", kind, type(exc).__name__)
+            return AgentReply(question=question, answer="", error=self._friendly_error(exc), error_kind=kind,
                               seconds=round(time.perf_counter() - started, 1))
         reply = self._parse(question, state["messages"][len(messages):])
         reply.seconds = round(time.perf_counter() - started, 1)
@@ -150,10 +178,11 @@ class MolarMetricsAgent:
     def _answer_out_of_scope(self, question: str, started: float) -> AgentReply:
         """Clinical outcome/quality questions: the model replies WITHOUT tools."""
         try:
-            msg = self.model.invoke([SystemMessage(SCOPE_SYSTEM_PROMPT), HumanMessage(question)])
+            msg = self.model.invoke([SystemMessage(self.scope_prompt), HumanMessage(question)])
         except Exception as exc:
-            log.exception("Scope reply failed for question %r", question)
-            return AgentReply(question=question, answer="", error=self._friendly_error(exc),
+            kind = error_kind(exc)
+            log.error("Scope reply failed (category=%s, error=%s)", kind, type(exc).__name__)
+            return AgentReply(question=question, answer="", error=self._friendly_error(exc), error_kind=kind,
                               seconds=round(time.perf_counter() - started, 1))
         answer = (msg.content if isinstance(msg.content, str) else str(msg.content)).strip()
         return AgentReply(
