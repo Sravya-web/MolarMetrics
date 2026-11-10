@@ -1,0 +1,17 @@
+Line ID,Appt ID,Procedure,Fee (Rs),Discount (Rs),Net (Rs)
+ST01,SA01,Consultation,₹500.00,₹0.00,₹500.00
+ST02,SA01,Scaling,"₹1,800.00",₹0.00,"₹1,800.00"
+ST03,SA02,Root canal treatment,"₹4,500.00",₹500.00,"₹4,000.00"
+ST04,SA04,Composite filling,"₹2,200.00",₹0.00,"₹2,200.00"
+ST05,SA05,Consultation,₹500.00,₹500.00,₹0.00
+ST06,SA05,Extraction,"₹1,500.00",₹0.00,"₹1,500.00"
+ST07,SA06,Root canal treatment,"₹4,500.00",₹500.00,"₹4,000.00"
+ST08,SA06,Crown,"₹12,000.00","₹1,000.00","₹11,000.00"
+ST09,SA08,Orthodontic review,"₹1,200.00",₹0.00,"₹1,200.00"
+ST10,SA10,Scaling,"₹1,800.00",₹0.00,"₹1,800.00"
+ST11,SA11,Consultation,₹500.00,₹0.00,₹500.00
+ST12,SA11,Composite filling,"₹2,200.00",₹200.00,"₹2,000.00"
+ST13,SA12,Extraction,"₹1,500.00",₹0.00,"₹1,500.00"
+ST14,SA14,Crown,"₹12,000.00",₹0.00,"₹12,000.00"
+ST15,SA15,Orthodontic review,"₹1,200.00",₹0.00,"₹1,200.00"
+ST16,SA15,Scaling,"₹1,800.00",₹0.00,"₹1,800.00"

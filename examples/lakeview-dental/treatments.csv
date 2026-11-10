@@ -1,0 +1,11 @@
+treatment_id,appointment_id,procedure_name,net_fee_paise
+LT01,LA01,Consultation,60000
+LT02,LA01,Scaling and polishing,200000
+LT03,LA02,Root canal treatment,550000
+LT04,LA04,Late cancellation fee,50000
+LT05,LA05,Crown,1500000
+LT06,LA06,Extraction,180000
+LT07,LA07,Consultation,60000
+LT08,LA07,Teeth whitening,800000
+LT09,LA09,Root canal treatment,550000
+LT10,LA10,Scaling and polishing,200000

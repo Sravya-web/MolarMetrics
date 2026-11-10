@@ -1,0 +1,11 @@
+appointment_id,patient_id,dentist_id,appointment_datetime,status
+LA01,L-P1,L-D1,2024-07-02 09:00:00,completed
+LA02,L-P2,L-D1,2024-07-02 10:00:00,completed
+LA03,L-P3,L-D2,2024-07-15 11:00:00,no-show
+LA04,L-P4,L-D2,2024-07-20 12:00:00,cancelled
+LA05,L-P1,L-D1,2024-08-05 09:00:00,completed
+LA06,L-P3,L-D2,2024-08-19 11:00:00,completed
+LA07,L-P5,L-D1,2024-08-26 15:00:00,completed
+LA08,L-P2,L-D2,2024-09-09 10:00:00,no-show
+LA09,L-P4,L-D2,2024-09-16 12:00:00,completed
+LA10,L-P6,L-D1,2024-09-30 16:00:00,completed
