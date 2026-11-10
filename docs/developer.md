@@ -181,13 +181,32 @@ then run the full test list below. Browser tests use the installed Google Chrome
 
 ## Verification log
 
-Recorded on 11 Nov 2026 (MacBook Air M2, macOS 15, Python 3.13.5, Node 22.22.2, Chrome, Ollama with
-llama3.2:3b). See the final summary of the migration branch for the run that accompanies this commit.
+Recorded on **11 Nov 2026** on the `migration/web-app` branch (MacBook Air M2, macOS 15, Python 3.13.5,
+Node 22.22.2, Google Chrome via Playwright 1.64.1, Ollama with `llama3.2:3b`).
 
-| Check | Result |
-|---|---|
-| Offline pytest | see branch summary |
-| Frontend type check, unit tests, production build | see branch summary |
-| Browser checks (offline) | see branch summary |
-| Live browser check (real model, uploaded data) | see branch summary |
-| Live pytest (web + original 11 questions) | see branch summary |
+| Check | Command | Result |
+|---|---|---|
+| Offline Python tests | `.venv/bin/python -m pytest` | **272 passed** (183 original, unchanged; 89 new), 0 failed |
+| Frontend type check | `npm run typecheck` (TypeScript 7.0.2) | **0 errors** |
+| Frontend unit tests | `npm test` | **6 passed** |
+| Production build | `npm run build` | **OK** (one ~690 KB bundle; warning limit raised, local app) |
+| Browser checks, offline | `npm run e2e:offline` | **13 passed** |
+| Browser check, live model | `npm run e2e` (live test) | **passed**: Sunrise "Which procedures generated the most billed revenue in 2025?" → Crown ₹23,000.00 in the answer, supporting table and downloaded CSV; Lakeview "What was billed revenue in 2024?" → ₹41,000.00, no Sunrise figures. Answers in 10.0 s and 5.1 s. |
+| Live Python checks | `.venv/bin/python -m pytest -m integration` | **15 passed**: 4 web checks on uploaded data (billed revenue, monthly answer, outstanding on the second dataset, missing records explained) and the original 11-question suite on the sample data |
+| Production mode | `./scripts/start.sh` | serves the built app on 127.0.0.1:8000 with CSP; chart renders; deep links reload; no console errors; path traversal returns the app page |
+| Streamlit app | `streamlit run app.py` | starts and serves (`/_stcore/health` ok) |
+| `npm audit` | | **0 vulnerabilities** |
+
+Notes from this run:
+
+* The first live run failed one original question (Q2, "Compare monthly billed revenue and
+  collections in 2025") on the `billed_vs_collections_consistent` wording check. The answer was
+  correct (it now cites the new monthly facts and states the ₹3,90,460.00 difference correctly); the
+  check's 70-character window had cut the word "difference". Rule 3 now reads the whole clause as
+  documented, the answer was added as a must-not-flag regression case, every must-flag case still
+  fails as intended, and Q2 and then the full live suite passed.
+* An early browser run took 34 minutes with two failures while a second Vite dev server shared the
+  same dependency cache; the test server now uses its own cache and pre-bundles dependencies, and
+  every later run took under a minute.
+* Live results come from one model at temperature 0 on these phrasings; rephrased questions can behave
+  differently. Calculated results, tables and downloads are authoritative.

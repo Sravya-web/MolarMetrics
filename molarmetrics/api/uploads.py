@@ -98,7 +98,7 @@ class UploadService:
             for pf, data in parsed:
                 (folder / f"{pf.file_id}.csv").write_bytes(data)
             meta = [{"file_id": pf.file_id, "filename": pf.filename, "size": pf.size} for pf, _ in parsed]
-            config = initial_config([pf for pf, _ in parsed], name=_default_name([pf.filename for pf, _ in parsed]))
+            config = initial_config([pf for pf, _ in parsed], name=_default_name())
             now = time.time()
             self.store.add_batch(BatchRow(id=batch_id, session_id=session_id, created_at=now, last_used_at=now,
                                           files=meta, config=config.model_dump()))
@@ -172,7 +172,7 @@ class UploadService:
         report, _, data = validate_batch(files, config)  # always re-validated here, never trusted
         if not report.ready or data is None:
             raise NotReady(report)
-        name = clean_dataset_name(config.name) or _default_name([pf.filename for pf in files])
+        name = clean_dataset_name(config.name) or _default_name()
         dataset_id = uuid.uuid4().hex
         db_path, meta = atomic_import(data, name, self.settings.datasets_dir, dataset_id)
         now = time.time()
@@ -205,7 +205,7 @@ def _type_suggestions(pf: ParsedFile) -> dict[str, TypeSuggestion]:
     return out
 
 
-def _default_name(filenames: list[str]) -> str:
+def _default_name() -> str:
     return f"Clinic data uploaded {time.strftime('%d %b %Y')}"
 
 

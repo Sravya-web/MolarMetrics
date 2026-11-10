@@ -1,5 +1,8 @@
 # MolarMetrics: portfolio demo walkthrough
 
+> This script describes the **earlier Streamlit app** (`streamlit run app.py`) on the bundled sample
+> data. The current web app (`./scripts/start.sh`) is described in the [README](README.md).
+
 A local portfolio prototype using **synthetic data**. Present it that way: it is not production
 software, it has no clinical validation, and it makes no claims about business impact.
 

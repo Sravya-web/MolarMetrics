@@ -36,7 +36,7 @@ def live(tmp_path, monkeypatch):
 
 
 def _ask(client, ds, question):
-    response = client.post(f"/api/datasets/{ds['id']}/ask", json={"question": question}, timeout=300)
+    response = client.post(f"/api/datasets/{ds['id']}/ask", json={"question": question})
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["dataset"]["id"] == ds["id"]

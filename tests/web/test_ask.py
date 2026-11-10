@@ -178,3 +178,13 @@ def test_empty_and_overlong_questions_are_rejected(client):
     ds = import_sunrise(client)
     assert _ask(client, ds, "   ").json()["error"]["message"] == "Please type a question."
     assert _ask(client, ds, "x" * 501).status_code == 422
+
+
+def test_suggestions_use_the_latest_well_covered_year():
+    from molarmetrics.api.ask_service import best_year
+    from molarmetrics.dataset import SAMPLE_CONTEXT, DatasetContext
+
+    assert best_year(SAMPLE_CONTEXT) == 2025  # 2024 (leap year) must not win by one day
+    spanning = DatasetContext(kind="uploaded", name="x", coverage_start="2024-07-01", coverage_end="2025-02-28",
+                              capabilities=frozenset({"appointments"}), procedure_names=(), notice="")
+    assert best_year(spanning) == 2024

@@ -96,13 +96,16 @@ def long_date(iso: str) -> str:
 
 
 def best_year(ctx: DatasetContext) -> int:
-    """The calendar year with the most days of data (latest wins ties)."""
+    """The latest calendar year that has (nearly) as much data as the best-covered
+    year, e.g. 2025 for data from Jan 2024 to Dec 2025 (a leap year must not win
+    by one day), but 2024 for data from Jul 2024 to Feb 2025."""
     s, e = date.fromisoformat(ctx.coverage_start), date.fromisoformat(ctx.coverage_end)
 
     def days(y: int) -> int:
         return (min(e, date(y, 12, 31)) - max(s, date(y, 1, 1))).days + 1
 
-    return max(ctx.years(), key=lambda y: (days(y), y))
+    most = max(days(y) for y in ctx.years())
+    return max(y for y in ctx.years() if days(y) >= 0.9 * most)
 
 
 def suggested_questions(ctx: DatasetContext) -> list[str]:

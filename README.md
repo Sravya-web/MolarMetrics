@@ -286,8 +286,16 @@ tests assert (for example Sunrise Dental: billed ₹47,000.00, collected ₹37,2
 
 ## Verification status
 
-See [`docs/developer.md#verification-log`](docs/developer.md#verification-log) for the latest recorded
-run of every check (offline tests, browser checks, live model checks) with dates and results.
+Recorded on 11 Nov 2026 (details and notes in
+[`docs/developer.md#verification-log`](docs/developer.md#verification-log)):
+
+| Check | Result |
+|---|---|
+| Offline Python tests | 272 passed (183 original, unchanged; 89 new) |
+| Frontend type check / unit tests / production build | 0 errors / 6 passed / OK |
+| Browser checks in Chrome (desktop and 390 px mobile) | 13 passed |
+| Live model, in the browser, on uploaded data | passed |
+| Live model, through the API (4 web checks + original 11 questions) | 15 passed |
 
 ---
 
